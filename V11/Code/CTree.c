@@ -9,6 +9,7 @@
 
     /* UPDATE 
     * - Ajout du paramétre stats
+    *   => Ajout des extention
     */
 
     /* TYPE DE DONNEE
@@ -78,6 +79,7 @@
         String name;
         ElementType type;
         String path;
+        String ext;
         long long size;
         double sizeConverted;
         ElementSizeCategory sizeCategory;
@@ -100,12 +102,23 @@
         int nbFile;             // Nombre de fichiers
     };
 
+    /* NOMBRE DE FOIS PAR EXTENTION
+     * Permet de faire les stat sur les extention ...
+    */
+    typedef struct {
+        char* ext;
+        int count;
+    } ExtStat;
+
     // Valeur statistique
     int g_nbDIR = 0;
     int g_nbFILE = 0;
     long long int g_globalSize = 0;
     Element* TopFive = NULL;
+    ExtStat* g_extStats = NULL;
+    int g_nbExt = 0;
 
+    
 
     // Fonction primaire 
     Directory scanDirectory(Element element,Param p);
@@ -119,6 +132,9 @@
     int depthCount(String path);
     int _atoi(char *input);
     void compareTop(Element element);
+    String getExt(char* str);
+    void addExt(char* ext);
+    void triABulleExt();
 
     // Affichage
     void printf_RGB(int r, int g, int b, const char* format, ...);
@@ -131,7 +147,7 @@
     int main(int argc, char *argv[]) {
 
         if(argc == 1 || strcmp(argv[1],"-info") == 0){
-            printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v10 ─────────────────────────────────────────┐\n",1);
+            printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v11 ─────────────────────────────────────────┐\n",1);
             printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras) │\n",1);
             printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.  │\n",1);
             printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1);
@@ -256,17 +272,24 @@
         */
 
         TopFive = (Element*) calloc(5, sizeof(Element));
+
         Directory Dir = scanDirectory(parent,p);
         printf_RGB(0,255,0,"%s\n",parent.name); // On affiche le path parent
         if(p.statsParam == 0){
             echoDirectory(Dir,"",p,0);
         }else{
+            triABulleExt();
+
             printf("\nNombre de fichier .....: %d\n",g_nbFILE);
             printf("Nombre de repertoire ..: %d\n",g_nbDIR);
             printf("Taille totale lue .....: %lld\n\n",g_globalSize);
             printf("Top 5 des fichier :\n");
             for(int i=0;i<5;i++){
                 printf("    %d : %s - %lld O\n",i+1,TopFive[i].path,TopFive[i].size);
+            }
+            printf("\nTop 5 des extention : \n");
+            for(int i=0;i<5;i++){
+                printf("    %d : %s - %d\n",i+1,g_extStats[i].ext,g_extStats[i].count);
             }
         }
         
@@ -344,6 +367,11 @@
             // On crée un espace de stockage pour sont nom et on affecte le nom effectife de ce fichier avec d_name
             NewDirectory.elements[i].name = calloc(4096,sizeof(char));
             strcpy(NewDirectory.elements[i].name, data->d_name);
+        
+            // On crée un espace pour sont extention (aussi)
+            NewDirectory.elements[i].ext = calloc(10,sizeof(char));
+            strcpy(NewDirectory.elements[i].ext, getExt(NewDirectory.elements[i].name));
+            addExt(NewDirectory.elements[i].ext);
             
             // On détermine sont path grace au path de l'élément mis en paramétre + son nom effectife
             NewDirectory.elements[i].path = calloc(4096,sizeof(char));
@@ -358,7 +386,6 @@
             if(data->d_type == DT_DIR){
                 // On définis sont type dans la strcuture en définisant cette élement comme une répertoire
                 NewDirectory.elements[i].type = T_DIR;
-
 
                 // Scanner le sous-répertoire
                 Directory subDir = scanDirectory(NewDirectory.elements[i],p);
@@ -989,6 +1016,49 @@
         }
     }
 
+    String getExt(char* str){
+        int after = 0;
+        int index = 0;
+        char* ext = (char*)calloc(10,sizeof(char));
+
+        for(int i=0;i<(int)strlen(str);i++){
+            if(str[i] == '.'){
+                after = 1;
+            }
+            if(after == 1){
+                ext[index] = str[i];
+                index++;
+            }
+        }
+        return ext;
+    }
+
+    void addExt(char* ext){
+        for(int i=0;i<g_nbExt;i++){
+            if(strcmp(g_extStats[i].ext,ext) == 0){
+                g_extStats[i].count++;
+                return;
+            }
+        }
+
+        g_nbExt++;
+        g_extStats = realloc(g_extStats, g_nbExt * sizeof(ExtStat));
+        g_extStats[g_nbExt-1].ext = calloc(strlen(ext)+1, sizeof(char)); // ← toujours manquant
+        strcpy(g_extStats[g_nbExt-1].ext, ext);
+        g_extStats[g_nbExt-1].count = 1;
+    }
+
+    void triABulleExt(){
+        for(int i = 0; i < g_nbExt - 1; i++){
+            for(int y = 0; y < g_nbExt - i - 1; y++){
+                if(g_extStats[y].count < g_extStats[y+1].count){
+                    ExtStat tmp = g_extStats[y];
+                    g_extStats[y] = g_extStats[y+1];
+                    g_extStats[y+1] = tmp;
+                }
+            }
+        }
+    }
 
     ///////////////////////////////////////////////////////////////
 
