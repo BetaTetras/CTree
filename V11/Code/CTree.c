@@ -22,18 +22,6 @@
         T_UNKN  // Fichier non standare ou non reconnue (cas d'echec principalement)
     } ElementType;
 
-    /* TAILLE DES FICHIER 
-    * Enum résument les différente taille disponibre 
-    * Octet ; KiloOctet ; MegaOctet ; GigaOctet ; TeraOctete
-    */
-    typedef enum {
-        O,
-        KO,
-        MO,
-        GO,
-        TO
-    } ElementSizeCategory;
-
     /* STRUCTURE DES PARAMETRE
     * Résumé des différent paramétre d'entrée pour une utilisation booleain dans les fonction utile 
     * Presque tout les valeur son des int "booleain" (0 ou 1) sauf pour deph et lenght qui sont de
@@ -82,7 +70,7 @@
         String ext;
         long long size;
         double sizeConverted;
-        ElementSizeCategory sizeCategory;
+        String sizeStr;
     }Element;
 
     /* TYPE DE REPERTOIRE 
@@ -114,11 +102,12 @@
     int g_nbDIR = 0;
     int g_nbFILE = 0;
     long long int g_globalSize = 0;
-    Element* TopFive = NULL;
+
     ExtStat* g_extStats = NULL;
     int g_nbExt = 0;
-
     
+    Element g_topFiles[10];
+    int g_topFilesInit = 0;
 
     // Fonction primaire 
     Directory scanDirectory(Element element,Param p);
@@ -127,42 +116,43 @@
 
     // Fonction secondaire
     Param getParameter(int argc, char *argv[]);
-    ElementSizeCategory getSizeCategory(long long size);
+    String getSizeStr(long long size);
     double getDirectorySize(Directory dir);
     int depthCount(String path);
     int _atoi(char *input);
-    void compareTop(Element element);
     String getExt(char* str);
     void addExt(char* ext);
     void triABulleExt();
+    void addToTop10(Element element);
 
     // Affichage
     void printf_RGB(int r, int g, int b, const char* format, ...);
-    void printf_wave_utf8(int r1, int g1, int b1,int r2, int g2, int b2,const char* text,int step);
+    void printf_wave_utf8(int r1, int g1, int b1,int r2, int g2, int b2,const char* text,int step,int* out_r, int* out_g, int* out_b);
     void sizeToGradientColor(long long size, int* r, int* g, int* b);
     void printf_RGB_BG(int fr, int fg, int fb, int br, int bg, int bb, const char* format, ...);
+    void printf_Stat();
 
     ////////////////////////////////////////////////////////////////
 
     int main(int argc, char *argv[]) {
 
         if(argc == 1 || strcmp(argv[1],"-info") == 0){
-            printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v11 ─────────────────────────────────────────┐\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras) │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.  │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Usage: CTree <path> [options]                               │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Ex   : CTree ./myFolder -deep -cut 3 10                     │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -path .....: Show path of each file                         │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -size .....: Show size of directories and files             │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -deep .....: Show both size and path                        │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -cut X Y ..: Limit depth and/or length of the tree          │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                    │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                    │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                       │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                  │\n",1);
-            printf_wave_utf8(178,0,255,0,38,255,"└─────────────────────────────────────────────────────────────┘\n",1);
+            printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v11 ─────────────────────────────────────────┐\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras) │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.  │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Usage: CTree <path> [options]                               │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Ex   : CTree ./myFolder -deep -cut 3 10                     │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -path .....: Show path of each file                         │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -size .....: Show size of directories and files             │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -deep .....: Show both size and path                        │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -cut X Y ..: Limit depth and/or length of the tree          │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                    │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                    │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                       │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                  │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"└─────────────────────────────────────────────────────────────┘\n",1,NULL,NULL,NULL);
 
             return 0;
         }
@@ -271,8 +261,6 @@
         * le typdef pour l'exploiter juste apres
         */
 
-        TopFive = (Element*) calloc(5, sizeof(Element));
-
         Directory Dir = scanDirectory(parent,p);
         printf_RGB(0,255,0,"%s\n",parent.name); // On affiche le path parent
         if(p.statsParam == 0){
@@ -280,17 +268,21 @@
         }else{
             triABulleExt();
 
+            printf_Stat();
+            /*
             printf("\nNombre de fichier .....: %d\n",g_nbFILE);
             printf("Nombre de repertoire ..: %d\n",g_nbDIR);
-            printf("Taille totale lue .....: %lld\n\n",g_globalSize);
-            printf("Top 5 des fichier :\n");
-            for(int i=0;i<5;i++){
-                printf("    %d : %s - %lld O\n",i+1,TopFive[i].path,TopFive[i].size);
+            printf("Taille totale lue .....: %s\n\n",getSizeStr(g_globalSize));
+            printf("\nTop 10 des fichies : \n");
+            for(int i=0;i<10;i++){
+                if(g_topFiles[i].size == 0) break;
+                printf("    %d : %s - %s\n", i+1, g_topFiles[i].path, g_topFiles[i].sizeStr);
             }
-            printf("\nTop 5 des extention : \n");
-            for(int i=0;i<5;i++){
+            printf("\nTop 10 des extention : \n");
+            for(int i=0;i<10;i++){
                 printf("    %d : %s - %d\n",i+1,g_extStats[i].ext,g_extStats[i].count);
             }
+            */
         }
         
 
@@ -395,63 +387,28 @@
 
                 // Calculer la taille réelle du sous-répertoire
                 double dirSize = getDirectorySize(subDir);
-                // On définit sa taille 
-                NewDirectory.elements[i].size = dirSize;
-                // On définit sa taille adaptée (O,KO,GO,TB...)
-                NewDirectory.elements[i].sizeCategory = getSizeCategory((long long)dirSize);
-
-                // Selon le resultat de la taille choisi on converti les octet brute en valeur correspondant
-                switch(NewDirectory.elements[i].sizeCategory) {
-                    case O:  
-                        NewDirectory.elements[i].sizeConverted = dirSize;
-                        break;
-                    case KO: 
-                        NewDirectory.elements[i].sizeConverted = dirSize / 1024.0;
-                        break;
-                    case MO: 
-                        NewDirectory.elements[i].sizeConverted = dirSize / (1024.0*1024.0);
-                        break;
-                    case GO: 
-                        NewDirectory.elements[i].sizeConverted = dirSize / (1024.0*1024.0*1024.0);
-                        break;
-                    case TO: 
-                        NewDirectory.elements[i].sizeConverted = dirSize / (1024.0*1024.0*1024.0*1024.0);
-                        break;
-                    default: 
-                        NewDirectory.elements[i].sizeConverted = dirSize;
-                        break;
-                }
+                // On définit sa taille et sa représentation en string
+                NewDirectory.elements[i].size = (long long)dirSize;
+                NewDirectory.elements[i].sizeStr = getSizeStr((long long)dirSize);
             }else if(data->d_type == DT_REG){
+                // On définis sont type dans la strcuture en définisant cette élement comme un fichier
                 NewDirectory.elements[i].type = T_FILE;
 
+                // On récupère la taille du fichier
                 struct stat st;
                 stat(NewDirectory.elements[i].path, &st);
                 long long buffer = st.st_size;
+
+                // On définit sa taille et sa représentation en string
                 NewDirectory.elements[i].size = buffer;
-                g_globalSize += NewDirectory.elements[i].size;
+                NewDirectory.elements[i].sizeStr = getSizeStr(buffer);
+
+                // On ajoute la taille au compteur global
+                g_globalSize += buffer;
+
+                // Si le mode stats est actif on compare et stock le fichier
                 if(p.statsParam == 1){
-                    compareTop(NewDirectory.elements[i]);
-                }
-                NewDirectory.elements[i].sizeCategory = getSizeCategory(buffer);
-                switch(NewDirectory.elements[i].sizeCategory) {
-                    case O:  
-                        NewDirectory.elements[i].sizeConverted = (double)st.st_size; 
-                    break;
-                    case KO: 
-                        NewDirectory.elements[i].sizeConverted = (double)st.st_size / 1024.0; 
-                    break;
-                    case MO: 
-                        NewDirectory.elements[i].sizeConverted = (double)st.st_size / (1024.0*1024.0); 
-                    break;
-                    case GO: 
-                        NewDirectory.elements[i].sizeConverted = (double)st.st_size / (1024.0*1024.0*1024.0); 
-                    break;
-                    case TO: 
-                        NewDirectory.elements[i].sizeConverted = (double)st.st_size / (1024.0*1024.0*1024.0*1024.0); 
-                    break;
-                    default: 
-                        NewDirectory.elements[i].sizeConverted = (double)st.st_size; 
-                    break;
+                    addToTop10(NewDirectory.elements[i]);
                 }
             }else{
                 NewDirectory.elements[i].type = T_UNKN;
@@ -468,282 +425,169 @@
     * Permet d'afficher l'arborésence aisni que traiter les paramétre entrée par l'utilisateur.
     */
     void echoDirectory(Directory directory,String prefix,Param p,int depth){
-        int nbElement = directory.nbDir + directory.nbFile;
-        int nbDir = directory.nbDir;
+    int nbElement = directory.nbDir + directory.nbFile;
+    int nbDir = directory.nbDir;
 
-        // Gestion du dernier élément ban
-        int indexLastVisible = nbElement;
-        int _break = 0;
-        if(p.banParam == 1){
-            for(int i=nbElement-1;i>=0;i--){
-                int banned = 0;
-                for(int y=0;y<p.nbBanParam;y++){
-                    if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
-                        banned = 1;
-                        break;
-                    }
-                }
-                if(!banned){ // non-banni = c'est le dernier visible
-                    indexLastVisible = i;
+    int indexLastVisible = nbElement;
+    if(p.banParam == 1){
+        for(int i=nbElement-1;i>=0;i--){
+            int banned = 0;
+            for(int y=0;y<p.nbBanParam;y++){
+                if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
+                    banned = 1;
                     break;
                 }
             }
-        }
-
-        int indexLenght = 0;
-        int IndexDir = 0;
-
-        for(int i=0;i<nbElement;i++){
-            if(directory.elements[i].type == T_FILE){
-                // Gestion de lenght
-                if(p.cutParam == 1 && indexLenght >= p.cutLenght){
-                    if( i == nbElement - 1){
-                        printf("%s",prefix);
-                        printf("└── ");
-                        printf_RGB(0,0,255," And %d other file ... \n",directory.nbFile-p.cutLenght);
-                    }
-                    continue;
-                }
-
-                // Gestion des bans
-                int found = 0;
-                if(p.banParam == 1){
-                    for(int y=0;y<p.nbBanParam;y++){
-                        if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
-                            found = 1;
-                            break;
-                        }
-                    }
-                }
-
-                if(found == 1){
-                    continue;
-                }
-
-                // Gestion des prefixe passée
-                printf("%s",prefix);
-                // Gestion de la logique des prefixe actuelle
-                if(i == nbElement - 1){
-                    printf("└── ");
-                }else if(i == indexLastVisible ){
-                    printf("└── ");
-                }else{
-                    printf("├── ");
-                }
-
-            int isSearched = 0;
-                if(p.searchParam == 1){
-                    for(int y=0; y<p.nbSearchParam; y++){
-                        if(strcmp(p.searchNameParam[y], directory.elements[i].name) == 0){
-                            isSearched = 1;
-                            printf_RGB_BG(0,0,0,255,255,255," %s ",directory.elements[i].name);
-                        }
-                    }
-                    if(!isSearched){
-                        printf("%s ",directory.elements[i].name);
-                    }
-                }else{
-                    printf("%s ",directory.elements[i].name);
-                }
-                if(p.pathParam == 1){
-                    printf(" ");
-                    if(isSearched == 1){
-                        printf_RGB_BG(0,0,0,0,128,255," %s ",directory.elements[i].path);
-                    }else{
-                        printf_RGB(0,128,255,"%s ",directory.elements[i].path);
-                    }
-                }if(p.sizeParam == 1){
-                    printf(" ");
-                    int r,g,b;
-                    sizeToGradientColor(directory.elements[i].size, &r, &g, &b);
-                    switch(directory.elements[i].sizeCategory){
-                        case O:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"O ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"O   ");
-                        break;
-                        case KO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"KO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"KO   ");
-                        break;
-                        case MO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"MO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"MO   ");
-                        break;
-                        case GO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"GO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"GO   ");
-                        break;
-                        case TO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"TO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"TO   ");
-                        break;
-                        default:
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"Error   ");
-                    }
-                }
-                printf("\n");
-                indexLenght++;
-            }else if(directory.elements[i].type == T_DIR){
-                // Gestion des bans
-                int found = 0;
-                if(p.banParam == 1){
-                    for(int y=0;y<p.nbBanParam;y++){
-                        if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
-                            found = 1;
-                            break;
-                        }
-                    }
-                }
-                if(found == 1){
-                    IndexDir ++;
-                    continue;
-                }
-
-                printf("%s",prefix);
-                if(i == nbElement - 1){
-                    printf("└── ");
-                }else if(i == indexLastVisible ){
-                    printf("└── ");
-                }else{
-                    printf("├── ");
-                }
-
-                int isSearched = 0;
-                if(p.searchParam == 1){
-                    for(int y=0;y<p.nbSearchParam;y++){
-                        if(strcmp(p.searchNameParam[y],directory.elements[i].name) == 0){
-                            isSearched = 1;
-                            printf_RGB_BG(0,0,0,0,255,0," %s ",directory.elements[i].name);
-                        }
-                    }
-                    if(!isSearched){
-                        printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
-                    }
-                }else{
-                    printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
-                }
-
-                if(p.cutParam && depth >= p.cutDepth){
-                    printf_RGB(0,0,255,"[Cuted]  ");
-                }
-                if(p.pathParam == 1){
-                    printf(" ");
-                    if(isSearched == 1){
-                        printf_RGB_BG(0,0,0,255,128,0," %s ",directory.elements[i].path);
-                    }else{
-                        printf_RGB(255,128,0,"%s ",directory.elements[i].path);
-                    }
-                }if(p.sizeParam == 1){
-                    printf(" ");
-                    int r,g,b;
-                    sizeToGradientColor(directory.elements[i].size, &r, &g, &b);
-                    switch(directory.elements[i].sizeCategory){
-                        case O:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"O ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"O   ");
-                        break;
-                        case KO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b, "%.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"KO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"KO   ");
-                        break;
-                        case MO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"MO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"MO ");
-                        break;
-                        case GO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"GO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"GO   ");
-                        break;
-                        case TO:
-                            if(isSearched == 1){
-                                printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
-                                printf_RGB_BG(0,0,0,r,g,b,"TO ");
-                                printf(" ");
-                                break;
-                            }
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"TO   ");
-                        break;
-                        default:
-                            printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                            printf_RGB(r,g,b,"Error   ");
-                    }
-                }
-                printf("\n");
-                String NewPrefix = (String)calloc(4096,sizeof(char));
-                strcpy(NewPrefix,prefix);
-                if(i == nbElement - 1 || i == indexLastVisible){
-                    strcat(NewPrefix,"   ");
-                }else{
-                    strcat(NewPrefix,"│  ");
-                }
-
-                if(p.cutParam && depth >= p.cutDepth){
-                    continue;
-                }
-                echoDirectory(directory.Directorys[IndexDir],NewPrefix,p,depth + 1);
-                free(NewPrefix);
-                IndexDir++;
-            }else if(directory.elements[i].type == DT_UNKNOWN){
-                printf_RGB(255,0,0,"%s\n",directory.elements[i].name);
+            if(!banned){
+                indexLastVisible = i;
+                break;
             }
         }
     }
+
+    int indexLenght = 0;
+    int IndexDir = 0;
+
+    for(int i=0;i<nbElement;i++){
+        if(directory.elements[i].type == T_FILE){
+            if(p.cutParam == 1 && indexLenght >= p.cutLenght){
+                if(i == nbElement - 1){
+                    printf("%s",prefix);
+                    printf("└── ");
+                    printf_RGB(0,0,255," And %d other file ... \n",directory.nbFile-p.cutLenght);
+                }
+                continue;
+            }
+
+            int found = 0;
+            if(p.banParam == 1){
+                for(int y=0;y<p.nbBanParam;y++){
+                    if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+            if(found == 1) continue;
+
+            printf("%s",prefix);
+            if(i == nbElement - 1 || i == indexLastVisible){
+                printf("└── ");
+            }else{
+                printf("├── ");
+            }
+
+            int isSearched = 0;
+            if(p.searchParam == 1){
+                for(int y=0; y<p.nbSearchParam; y++){
+                    if(strcmp(p.searchNameParam[y], directory.elements[i].name) == 0){
+                        isSearched = 1;
+                        printf_RGB_BG(0,0,0,255,255,255," %s ",directory.elements[i].name);
+                    }
+                }
+                if(!isSearched) printf("%s ",directory.elements[i].name);
+            }else{
+                printf("%s ",directory.elements[i].name);
+            }
+
+            if(p.pathParam == 1){
+                if(isSearched == 1){
+                    printf_RGB_BG(0,0,0,0,128,255," %s ",directory.elements[i].path);
+                }else{
+                    printf_RGB(0,128,255,"%s ",directory.elements[i].path);
+                }
+            }
+
+            if(p.sizeParam == 1){
+                int r,g,b;
+                sizeToGradientColor(directory.elements[i].size, &r, &g, &b);
+                if(isSearched == 1){
+                    printf_RGB_BG(0,0,0,r,g,b," %s ",directory.elements[i].sizeStr);
+                }else{
+                    printf_RGB(r,g,b,"%s ",directory.elements[i].sizeStr);
+                }
+            }
+
+            printf("\n");
+            indexLenght++;
+
+        }else if(directory.elements[i].type == T_DIR){
+            int found = 0;
+            if(p.banParam == 1){
+                for(int y=0;y<p.nbBanParam;y++){
+                    if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+            if(found == 1){
+                IndexDir++;
+                continue;
+            }
+
+            printf("%s",prefix);
+            if(i == nbElement - 1 || i == indexLastVisible){
+                printf("└── ");
+            }else{
+                printf("├── ");
+            }
+
+            int isSearched = 0;
+            if(p.searchParam == 1){
+                for(int y=0;y<p.nbSearchParam;y++){
+                    if(strcmp(p.searchNameParam[y],directory.elements[i].name) == 0){
+                        isSearched = 1;
+                        printf_RGB_BG(0,0,0,0,255,0," %s ",directory.elements[i].name);
+                    }
+                }
+                if(!isSearched) printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
+            }else{
+                printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
+            }
+
+            if(p.cutParam && depth >= p.cutDepth){
+                printf_RGB(0,0,255,"[Cuted]  ");
+            }
+
+            if(p.pathParam == 1){
+                if(isSearched == 1){
+                    printf_RGB_BG(0,0,0,255,128,0," %s ",directory.elements[i].path);
+                }else{
+                    printf_RGB(255,128,0,"%s ",directory.elements[i].path);
+                }
+            }
+
+            if(p.sizeParam == 1){
+                int r,g,b;
+                sizeToGradientColor(directory.elements[i].size, &r, &g, &b);
+                if(isSearched == 1){
+                    printf_RGB_BG(0,0,0,r,g,b," %s ",directory.elements[i].sizeStr);
+                }else{
+                    printf_RGB(r,g,b,"%s ",directory.elements[i].sizeStr);
+                }
+            }
+
+            printf("\n");
+            String NewPrefix = (String)calloc(4096,sizeof(char));
+            strcpy(NewPrefix,prefix);
+            if(i == nbElement - 1 || i == indexLastVisible){
+                strcat(NewPrefix,"   ");
+            }else{
+                strcat(NewPrefix,"│  ");
+            }
+
+            if(!(p.cutParam && depth >= p.cutDepth)){
+                echoDirectory(directory.Directorys[IndexDir],NewPrefix,p,depth + 1);
+            }
+            free(NewPrefix);
+            IndexDir++;
+
+        }else if(directory.elements[i].type == T_UNKN){
+            printf_RGB(255,0,0,"%s\n",directory.elements[i].name);
+        }
+    }
+}
 
     /* freeDirectory
     * Fonction qui libére tout les allocation d'un répertoire passée en paramétre, a utlisée a la fin
@@ -754,6 +598,8 @@
         for(int i=0;i<dir->nbDir + dir->nbFile;i++) {
             free(dir->elements[i].name);
             free(dir->elements[i].path);
+            free(dir->elements[i].ext);
+            free(dir->elements[i].sizeStr);
         }
         free(dir->elements);
         free(dir->Directorys);
@@ -804,22 +650,19 @@
     /* getSizeCategory
     * Donne la catégorie du poids d'un fichier
     */
-    ElementSizeCategory getSizeCategory(long long size){
-        const long long  SIZE_KO = 1024LL;
-        const long long  SIZE_MO = 1024LL * 1024LL;
-        const long long  SIZE_GO = 1024LL * 1024LL * 1024LL;
-        const long long  SIZE_TO = 1024LL * 1024LL * 1024LL * 1024LL;
-
-        if (size < SIZE_KO)
-            return O;
-        else if (size < SIZE_MO)
-            return KO;
-        else if (size < SIZE_GO)
-            return MO;
-        else if (size < SIZE_TO)
-            return GO;
+    String getSizeStr(long long size){
+        char* str = calloc(20, sizeof(char));
+        if(size < 1024LL)
+            snprintf(str, 20, "%.2f O", (double)size);
+        else if(size < 1024LL*1024LL)
+            snprintf(str, 20, "%.2f KO", (double)size / 1024.0);
+        else if(size < 1024LL*1024LL*1024LL)
+            snprintf(str, 20, "%.2f MO", (double)size / (1024.0*1024.0));
+        else if(size < 1024LL*1024LL*1024LL*1024LL)
+            snprintf(str, 20, "%.2f GO", (double)size / (1024.0*1024.0*1024.0));
         else
-            return TO;
+            snprintf(str, 20, "%.2f TO", (double)size / (1024.0*1024.0*1024.0*1024.0));
+        return str;
     }
     /* getParameter
     * Traite les paramétre passée en paramétre a l'appelle de la fonction et renvois une structure
@@ -1000,22 +843,6 @@
         return sign * value;
     }
 
-    void compareTop(Element element){
-        long long size = element.size;
-
-        // Trouver la position d'insertion
-        for(int i = 0; i < 5; i++){
-            if(size >= TopFive[i].size){
-                // Décaler les éléments vers le bas à partir de la fin
-                for(int y = 4; y > i; y--){
-                    TopFive[y] = TopFive[y-1];
-                }
-                TopFive[i] = element;
-                return;
-            }
-        }
-    }
-
     String getExt(char* str){
         int after = 0;
         int index = 0;
@@ -1060,6 +887,41 @@
         }
     }
 
+    /* addToTop10
+    * Insère un élément dans le top 10 des fichiers les plus lourds
+    * O(1) par fichier, pas de stockage de tous les fichiers
+    */
+    void addToTop10(Element element){
+        if(!g_topFilesInit){
+            for(int i=0;i<10;i++) g_topFiles[i].size = 0;
+            g_topFilesInit = 1;
+        }
+        if(element.size <= g_topFiles[9].size) return;
+        for(int i=0;i<10;i++){
+            if(element.size > g_topFiles[i].size){
+                for(int y=9;y>i;y--){
+                    g_topFiles[y] = g_topFiles[y-1];
+                }
+                g_topFiles[i] = element;
+                return;
+            }
+        }
+    }
+
+    int nbDigit(int nb){
+        if(nb == 0){
+            return 1;
+        }
+
+        int count = 0;
+        while(nb >0){
+            nb/=10;
+            count ++;
+        }
+
+        return count;
+    }
+
     ///////////////////////////////////////////////////////////////
 
 
@@ -1079,19 +941,20 @@
     void printf_wave_utf8(int r1, int g1, int b1,
                         int r2, int g2, int b2,
                         const char* text,
-                        int step) {
+                        int step,
+                        int* out_r, int* out_g, int* out_b) {
         const char *p = text;
         
-        // compter le nombre de caractères pour le gradient
         int char_count = 0;
         while (*p) {
             unsigned char c = (unsigned char)*p;
-            if ((c & 0xC0) != 0x80) char_count++; // uniquement le premier octet d'un caractère
+            if ((c & 0xC0) != 0x80) char_count++;
             p++;
         }
 
         p = text;
         int index = 0;
+        int r = r1, g = g1, b = b1; // valeurs initialisées au cas où text est vide
         while (*p) {
             unsigned char c = (unsigned char)*p;
             int bytes = 1;
@@ -1100,9 +963,9 @@
             else if (c >= 0xC0) bytes = 2;
 
             // gradient
-            int r = r1 + (r2 - r1) * index / (char_count - 1);
-            int g = g1 + (g2 - g1) * index / (char_count - 1);
-            int b = b1 + (b2 - b1) * index / (char_count - 1);
+            r = r1 + (r2 - r1) * index / (char_count - 1);
+            g = g1 + (g2 - g1) * index / (char_count - 1);
+            b = b1 + (b2 - b1) * index / (char_count - 1);
 
             // step
             if (r1 < r2) r += step * index; else r -= step * index;
@@ -1114,12 +977,16 @@
             g = (g>255)?255:(g<0?0:g);
             b = (b>255)?255:(b<0?0:b);
 
-            // afficher le caractère complet
-            printf("\033[38;2;%d;%d;%dm", r, g, b); // juste le code couleur
+            printf("\033[38;2;%d;%d;%dm", r, g, b);
             printf("%.*s", bytes, p);
             p += bytes;
             index++;
         }
+
+        // Retourner les dernières valeurs RGB si les pointeurs sont fournis
+        if(out_r) *out_r = r;
+        if(out_g) *out_g = g;
+        if(out_b) *out_b = b;
     }
 
     void sizeToGradientColor(long long size, int* r, int* g, int* b) {
@@ -1174,4 +1041,26 @@
         vprintf(format, args);
         printf("\033[0m");
         va_end(args);
+    }
+
+    void printf_Stat(){
+        /*
+        ┌─ Sys ─────────────────────────────────────────┐
+	    │  Nombre de repertoire ..:                     │
+        │  Nombre de fichier .....:                     │
+        │  Poid totale scanée ....:                     │
+	    └───────────────────────────────────────────────┘
+        */
+        int r,g,b;
+        int buffeurChar = 0;
+
+        char* globalSize = getSizeStr(g_globalSize);
+        buffeurChar = (int)strlen(globalSize);
+
+        if(nbDigit(g_nbDIR) > )
+
+        printf_wave_utf8(178,0,255,0,38,255,"┌─ Sys ──────────────┐\n",1,&r,&g,&b);
+        printf_wave_utf8(178,0,255,0,38,255,"│                    │\n",1,NULL,NULL,NULL);
+        printf_wave_utf8(178,0,255,0,38,255,"└────────────────────┘\n",1,NULL,NULL,NULL);
+
     }
