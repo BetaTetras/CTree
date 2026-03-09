@@ -131,6 +131,8 @@
     void sizeToGradientColor(long long size, int* r, int* g, int* b);
     void printf_RGB_BG(int fr, int fg, int fb, int br, int bg, int bb, const char* format, ...);
     void printf_Stat();
+    int* print_rainbow(int* rgb, float brightness, const char* string, int pas, int sens, int max);
+    void printBarre(int _Size, int value);
 
     ////////////////////////////////////////////////////////////////
 
@@ -922,6 +924,40 @@
         return count;
     }
 
+    String intToString(int NbINT){
+        long BufferINT = NbINT;
+        int NbCar = 1;
+
+        // Si négatif, réserver une place pour '-'
+        if(BufferINT < 0){
+            NbCar++;
+            BufferINT = -BufferINT; // on travaille sur la valeur positive
+        }
+
+        long Temp = BufferINT;
+        while(Temp/10 != 0){
+            Temp /= 10;
+            NbCar++;
+        }
+
+        String NbSTR = (String)calloc(NbCar+1, sizeof(char));
+        NbSTR[NbCar] = '\0';
+
+        int i = NbCar - 1;
+        do{
+            NbSTR[i] = (BufferINT % 10) + '0';
+            BufferINT /= 10;
+            i--;
+        } while(BufferINT > 0);
+
+        // Mettre le signe '-' si nécessaire
+        if(NbINT < 0){
+            NbSTR[0] = '-';
+        }
+
+        return NbSTR;
+    }
+
     ///////////////////////////////////////////////////////////////
 
 
@@ -1043,24 +1079,202 @@
         va_end(args);
     }
 
+    void printBarre(int _Size, int value) {
+        char* on  = (char*)calloc(_Size * 3 + 1, 1);
+        char* off = (char*)calloc((_Size - value) * 3 + 1, 1);
+
+        for (int i = 0; i < value; i++) {
+            memcpy(on + i * 3, "█", 3);
+        }
+        on[value * 3] = '\0';
+
+        for (int i = 0; i < _Size - value; i++) {
+            memcpy(off + i * 3, "█", 3);
+        }
+        off[(_Size - value) * 3] = '\0';
+
+        int* start = (int*)calloc(3,sizeof(int));
+        int* end = (int*)calloc(3,sizeof(int));
+
+        start[0] = 0; start[1] = 255; start[2] = 0;
+
+        end = print_rainbow(start, 1.0f, on, 12, 1, 252);
+
+        // Divise par 2 pour correspondre au max=126 de la partie sombre
+        int* end_dark = (int*)calloc(3, sizeof(int));
+        end_dark[0] = end[0] / 2;
+        end_dark[1] = end[1] / 2;
+        end_dark[2] = end[2] / 2;
+        print_rainbow(end_dark, 0.5f, off, 6, 1, 126);
+
+        free(on);
+        free(off);
+    }
+
+    int* print_rainbow(int* rgb, float brightness, const char* string, int pas, int sens, int max) {
+        if (rgb[0] > max) rgb[0] = max;
+        if (rgb[1] > max) rgb[1] = max;
+        if (rgb[2] > max) rgb[2] = max;
+
+        int _r = rgb[0];
+        int _g = rgb[1];
+        int _b = rgb[2];
+
+        int i = 0;
+        while (string[i] != '\0') {
+            /* Détecter la taille du caractère UTF-8
+            * 0xxxxxxx  → 1 octet  (ASCII classique, valeur < 0x80)
+            * 110xxxxx  → 2 octets (valeur >= 0xC0)
+            * 1110xxxx  → 3 octets (valeur >= 0xE0)
+            * 11110xxx  → 4 octets (valeur >= 0xF0)
+            */
+            int char_len = 1;
+            unsigned char c = (unsigned char)string[i];
+            if      (c >= 0xF0) char_len = 4;
+            else if (c >= 0xE0) char_len = 3;
+            else if (c >= 0xC0) char_len = 2;
+
+            printf("\033[38;2;%d;%d;%dm", (int)(_r * brightness),(int)(_g * brightness),(int)(_b * brightness));
+            for (int j = 0; j < char_len; j++)
+                putchar(string[i + j]);
+            printf("\033[0m");
+
+            i += char_len;
+
+            if (sens == 0) {
+                if (_r >= max && _g < max && _b == 0) {
+                    _g += pas;
+                    if (_g > max) {
+                        _g = max;
+                    }
+                } else if (_r > 0 && _g >= max && _b == 0) {
+                    _r -= pas;
+                    if (_r < 0) {
+                        _r = 0;
+                    }
+                } else if (_r == 0 && _g >= max && _b < max) {
+                    _b += pas;
+                    if (_b > max) {
+                        _b = max;
+                    }
+                } else if (_r == 0 && _g > 0 && _b >= max) {
+                    _g -= pas;
+                    if (_g < 0) {
+                        _g = 0;
+                    }
+                } else if (_r < max && _g == 0 && _b >= max) {
+                    _r += pas;
+                    if (_r > max) {
+                        _r = max;
+                    }
+                } else if (_r >= max && _g == 0 && _b > 0) {
+                    _b -= pas;
+                    if (_b < 0) {
+                        _b = 0;
+                    }
+                }
+            } else {
+                if (_r >= max && _g == 0 && _b < max) {
+                    _b += pas;
+                    if (_b > max) {
+                        _b = max;
+                    }
+                } else if (_r > 0 && _g == 0 && _b >= max) {
+                    _r -= pas;
+                    if (_r < 0) {
+                        _r = 0;
+                    }
+                } else if (_r == 0 && _g < max && _b >= max) {
+                    _g += pas;
+                    if (_g > max) {
+                        _g = max;
+                    }
+                } else if (_r == 0 && _g >= max && _b > 0) {
+                    _b -= pas;
+                    if (_b < 0) {
+                        _b = 0;
+                    }
+                } else if (_r < max && _g >= max && _b == 0) {
+                    _r += pas;
+                    if (_r > max) {
+                        _r = max;
+                    }
+                } else if (_r >= max && _g > 0 && _b == 0) {
+                    _g -= pas;
+                    if (_g < 0) {
+                        _g = 0;
+                    }
+                }
+            }
+        }
+
+        int* res = (int*)calloc(3,sizeof(int));
+        res[0] = _r;
+        res[1] = _g;
+        res[2] = _b;
+        return res;
+    }
+
     void printf_Stat(){
         /*
-        ┌─ Sys ─────────────────────────────────────────┐
+        ┌─ Information numérique ───────────────────────┐
 	    │  Nombre de repertoire ..:                     │
         │  Nombre de fichier .....:                     │
         │  Poid totale scanée ....:                     │
 	    └───────────────────────────────────────────────┘
         */
+
         int r,g,b;
+        int _r,_g,_b;
         int buffeurChar = 0;
+
+        int nbrMAX = 0;
+        int extMAX = 0;
 
         char* globalSize = getSizeStr(g_globalSize);
         buffeurChar = (int)strlen(globalSize);
 
-        if(nbDigit(g_nbDIR) > )
 
-        printf_wave_utf8(178,0,255,0,38,255,"┌─ Sys ──────────────┐\n",1,&r,&g,&b);
-        printf_wave_utf8(178,0,255,0,38,255,"│                    │\n",1,NULL,NULL,NULL);
-        printf_wave_utf8(178,0,255,0,38,255,"└────────────────────┘\n",1,NULL,NULL,NULL);
+        if(nbDigit(g_nbDIR) > buffeurChar){
+            buffeurChar = nbDigit(g_nbDIR);
+        }
 
+        if(nbDigit(g_nbFILE) > buffeurChar){
+            buffeurChar = nbDigit(g_nbDIR);
+        }
+        char* ligne = (char*)calloc((buffeurChar+1) * 3 + 1,sizeof(char));
+
+        for(int i=0;i<buffeurChar+1;i++){
+            strcat(ligne, "─");
+        }
+
+        for(int i=0;i<5;i++){
+            if((int)strlen(g_extStats[i].ext) > extMAX){
+                extMAX = (int)strlen(g_extStats[i].ext);
+            }
+        }
+        if(extMAX < 9){
+            extMAX = 9;
+        }
+
+        for(int i=0;i<5;i++){
+            if(nbDigit(g_extStats[i].count) > nbrMAX){
+                nbrMAX = nbDigit(g_extStats[i].count);
+            }
+        }
+        if(nbrMAX < 6){
+            nbrMAX = 6;
+        }
+
+        printf_wave_utf8(178,0,255,0,38,255,"┌─ Information numérique ──",1,&r,&g,&b);printf_wave_utf8(r,g,b,0,38,255,ligne,1,&_r,&_g,&_b);printf_RGB(_r,_g,_b,"┐\n");
+        printf_wave_utf8(178,0,255,0,38,255,"│ Nombre de repertoire ..: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%d ",g_nbDIR);for(int i=0;i<buffeurChar - nbDigit(g_nbDIR);i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
+        printf_wave_utf8(178,0,255,0,38,255,"│ Nombre de fichier .....: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%d ",g_nbFILE);for(int i=0;i<buffeurChar - nbDigit(g_nbFILE);i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
+        printf_wave_utf8(178,0,255,0,38,255,"│ Poids totale scanée ...: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%s ",getSizeStr(g_globalSize));for(int i=0;i<buffeurChar - (int)strlen(getSizeStr(g_globalSize));i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
+        printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────",1,NULL,NULL,NULL);printf_wave_utf8(r,g,b,0,38,255,ligne,1,&_r,&_g,&_b);printf_RGB(_r,_g,_b,"┘\n");
+
+        printf_wave_utf8(178,0,255,0,38,255,"┌─ Top 5 des extention ──",1,&r,&g,&b);for(int i=0;i<(extMAX + nbrMAX + 15) - 25;i++){printf_wave_utf8(r,g,b,0,38,255,"─",1,&r,&g,&b);};printf_RGB(r,g,b,"┐\n");        
+        printf_wave_utf8(178,0,255,0,38,255,"| ",1,&r,&g,&b);printf_wave_utf8(r,g,b,0,38,255,g_extStats[0].ext,1,&r,&g,&b);for(int i=0;i<extMAX;i++){printf_wave_utf8(r,g,b,0,38,255," ",1,&r,&g,&b);};printf_wave_utf8(r,g,b,0,38,255,g_extStats[0].ext,1,&r,&g,&b);for(int i=0;i<nbrMAX;i++){printf_wave_utf8(r,g,b,0,38,255," ",1,&r,&g,&b);}
+        
+        
+        
     }
