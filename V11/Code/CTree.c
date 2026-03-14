@@ -321,31 +321,11 @@
         // On ouvre le fichier qui se trouve dans le path de l'élément passée en param
         dir = opendir(NewDirectory.path);
 
-        // Tant qu'on peut lire dans le répertoire 
-        while((data = readdir(dir)) != NULL){
-            // On saute "." (Répertoire courant) et ".." (Répertoire parent)
-            if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0){
-                continue;
-            }else{
-                
-                if(data->d_type == DT_DIR){             // Si le type rencontrée est un répertoire on augmenre le compteur associer
-                    NewDirectory.nbDir ++;
-                    g_nbDIR ++;
-                }else if(data->d_type == DT_REG){       // Si le type rencontrée est un fichier on augmenre le compteur associer
-                    NewDirectory.nbFile ++;
-                    g_nbFILE ++;
-                }else if(data->d_type == DT_UNKNOWN){   // Si le type rencontrée n'est pas reconnue alors on le saute (Eviter les erreur)
-                    g_nbFILE ++;
-                    continue;
-                }
-            }
-        }
-        // On réinitilalise le curseur
-        rewinddir(dir);
         // On crée donc la liste d'élements qu'il y'a dans le répertoire
-        NewDirectory.elements = calloc(NewDirectory.nbDir + NewDirectory.nbFile,sizeof(Element));
+        // Allocation large pour éviter les problèmes de double passage readdir
+        NewDirectory.elements = calloc(4096,sizeof(Element));
         // Pareil avec la liste de répertoire 
-        NewDirectory.Directorys = calloc(NewDirectory.nbDir,sizeof(Directory));
+        NewDirectory.Directorys = calloc(4096,sizeof(Directory));
 
         // Index pour se repérée
         int i = 0;
@@ -354,7 +334,7 @@
         // Tant qu'on peut lire dans le répertoire
         while((data = readdir(dir)) != NULL){
             // On saute "." (Répertoire courant) et ".." (Répertoire parent)
-            if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0){
+            if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0 || data->d_type == DT_UNKNOWN ){
                 continue;
             }
             // On renconte un nouvelle élément !
@@ -363,9 +343,8 @@
             strcpy(NewDirectory.elements[i].name, data->d_name);
         
             // On crée un espace pour sont extention (aussi)
-            NewDirectory.elements[i].ext = calloc(10,sizeof(char));
-            strcpy(NewDirectory.elements[i].ext, getExt(NewDirectory.elements[i].name));
-            addExt(NewDirectory.elements[i].ext);
+            char* _ext = getExt(NewDirectory.elements[i].name);
+            NewDirectory.elements[i].ext = _ext;  // on garde directement le pointeur alloué par getExt
             
             // On détermine sont path grace au path de l'élément mis en paramétre + son nom effectife
             NewDirectory.elements[i].path = calloc(4096,sizeof(char));
@@ -396,6 +375,8 @@
                 // On définis sont type dans la strcuture en définisant cette élement comme un fichier
                 NewDirectory.elements[i].type = T_FILE;
 
+                addExt(NewDirectory.elements[i].ext);
+
                 // On récupère la taille du fichier
                 struct stat st;
                 stat(NewDirectory.elements[i].path, &st);
@@ -414,9 +395,31 @@
                 }
             }else{
                 NewDirectory.elements[i].type = T_UNKN;
+                NewDirectory.elements[i].sizeStr = NULL;
+                NewDirectory.elements[i].size = 0;
             }
             i++;
         }
+
+        // On met à jour les compteurs avec les valeurs réelles du passage unique
+        NewDirectory.nbDir  = IndexDire;
+        NewDirectory.nbFile = i - IndexDire;
+        g_nbDIR  += IndexDire;
+        g_nbFILE += i - IndexDire;
+
+        // On réduit les allocations à la taille réelle
+        if(i > 0){
+            NewDirectory.elements = realloc(NewDirectory.elements, i * sizeof(Element));
+        }else{
+            NewDirectory.elements = realloc(NewDirectory.elements, 1 * sizeof(Element));
+        }
+
+        if(IndexDire > 0){
+            NewDirectory.Directorys = realloc(NewDirectory.Directorys, IndexDire * sizeof(Directory));
+        }else{
+            NewDirectory.Directorys = realloc(NewDirectory.Directorys, 1 * sizeof(Directory));
+        }
+
         closedir(dir);
         return NewDirectory;
     }
@@ -601,7 +604,8 @@
             free(dir->elements[i].name);
             free(dir->elements[i].path);
             free(dir->elements[i].ext);
-            free(dir->elements[i].sizeStr);
+            if(dir->elements[i].sizeStr != NULL)
+                free(dir->elements[i].sizeStr);
         }
         free(dir->elements);
         free(dir->Directorys);
@@ -846,23 +850,26 @@
     }
 
     String getExt(char* str){
-        int after = 0;
-        int index = 0;
-        char* ext = (char*)calloc(10,sizeof(char));
+        int lastDot = -1;
 
-        for(int i=0;i<(int)strlen(str);i++){
-            if(str[i] == '.'){
-                after = 1;
-            }
-            if(after == 1){
-                ext[index] = str[i];
-                index++;
-            }
+        for(int i=0; i<(int)strlen(str); i++){
+            if(str[i] == '.') lastDot = i;
         }
+
+        if(lastDot == -1){
+            char* ext = calloc(1, sizeof(char));
+            return ext;
+        }
+
+        char* ext = calloc(strlen(str) - lastDot + 1, sizeof(char));
+        strcpy(ext, str + lastDot);
         return ext;
     }
 
     void addExt(char* ext){
+        if(ext == NULL || ext[0] == '\0'){
+            ext = ".";
+        };
         for(int i=0;i<g_nbExt;i++){
             if(strcmp(g_extStats[i].ext,ext) == 0){
                 g_extStats[i].count++;
@@ -1080,35 +1087,35 @@
     }
 
     void printBarre(int _Size, int value) {
-        char* on  = (char*)calloc(_Size * 3 + 1, 1);
+        char* on  = (char*)calloc(value * 3 + 1, 1);
         char* off = (char*)calloc((_Size - value) * 3 + 1, 1);
 
-        for (int i = 0; i < value; i++) {
+        for (int i = 0; i < value; i++)
             memcpy(on + i * 3, "█", 3);
-        }
         on[value * 3] = '\0';
 
-        for (int i = 0; i < _Size - value; i++) {
+        for (int i = 0; i < _Size - value; i++)
             memcpy(off + i * 3, "█", 3);
-        }
         off[(_Size - value) * 3] = '\0';
 
-        int* start = (int*)calloc(3,sizeof(int));
-        int* end = (int*)calloc(3,sizeof(int));
+        int* start = (int*)calloc(3, sizeof(int));
+        start[0] = 255; start[1] = 255; start[2] = 0;
 
-        start[0] = 0; start[1] = 255; start[2] = 0;
+        int* end = print_rainbow(start, 1.0f, on, 12, 0, 252);
 
-        end = print_rainbow(start, 1.0f, on, 12, 1, 252);
-
-        // Divise par 2 pour correspondre au max=126 de la partie sombre
         int* end_dark = (int*)calloc(3, sizeof(int));
         end_dark[0] = end[0] / 2;
         end_dark[1] = end[1] / 2;
         end_dark[2] = end[2] / 2;
-        print_rainbow(end_dark, 0.5f, off, 6, 1, 126);
+
+        int* res = print_rainbow(end_dark, 0.5f, off, 6, 0, 126);
 
         free(on);
         free(off);
+        free(start);
+        free(end);
+        free(end_dark);
+        free(res);
     }
 
     int* print_rainbow(int* rgb, float brightness, const char* string, int pas, int sens, int max) {
@@ -1223,47 +1230,54 @@
         │  Poid totale scanée ....:                     │
 	    └───────────────────────────────────────────────┘
         */
-
+        // Valeut buffeur pour se repérée dans le rgb
         int r,g,b;
         int _r,_g,_b;
         int buffeurChar = 0;
 
+        // Nombre MAXIMAL des valeur pour (nbr de char) pour aligné le tab
         int nbrMAX = 0;
+        // Same avec le nom des extention
         int extMAX = 0;
 
+        int topExt = g_nbExt;
+        if(g_nbExt > 5){
+            topExt = 5;
+        }
+
+        // On récupère la valeur globale du scan et on la récup en valeur converti (GO/MO...)
         char* globalSize = getSizeStr(g_globalSize);
+        // On recip la taille en char du globalSize pour aligné le tab
         buffeurChar = (int)strlen(globalSize);
 
-
+        //On chek quelle ets la valeur en char la plus grande
         if(nbDigit(g_nbDIR) > buffeurChar){
             buffeurChar = nbDigit(g_nbDIR);
         }
-
+        // Same here
         if(nbDigit(g_nbFILE) > buffeurChar){
-            buffeurChar = nbDigit(g_nbDIR);
+            buffeurChar = nbDigit(g_nbFILE);
         }
-        char* ligne = (char*)calloc((buffeurChar+1) * 3 + 1,sizeof(char));
+        // On fais la ligne de séparation
+        char* ligne = (char*)calloc((buffeurChar+1) * 3 + 4, sizeof(char));
 
+        // On fais la ligne 
         for(int i=0;i<buffeurChar+1;i++){
             strcat(ligne, "─");
         }
 
-        for(int i=0;i<5;i++){
+        // On définit quelle extention est la plus longue
+        for(int i=0;i<topExt;i++){
             if((int)strlen(g_extStats[i].ext) > extMAX){
                 extMAX = (int)strlen(g_extStats[i].ext);
             }
         }
-        if(extMAX < 9){
-            extMAX = 9;
-        }
 
-        for(int i=0;i<5;i++){
+        // Same here
+        for(int i=0;i<topExt;i++){
             if(nbDigit(g_extStats[i].count) > nbrMAX){
                 nbrMAX = nbDigit(g_extStats[i].count);
             }
-        }
-        if(nbrMAX < 6){
-            nbrMAX = 6;
         }
 
         printf_wave_utf8(178,0,255,0,38,255,"┌─ Information numérique ──",1,&r,&g,&b);printf_wave_utf8(r,g,b,0,38,255,ligne,1,&_r,&_g,&_b);printf_RGB(_r,_g,_b,"┐\n");
@@ -1272,9 +1286,37 @@
         printf_wave_utf8(178,0,255,0,38,255,"│ Poids totale scanée ...: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%s ",getSizeStr(g_globalSize));for(int i=0;i<buffeurChar - (int)strlen(getSizeStr(g_globalSize));i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
         printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────",1,NULL,NULL,NULL);printf_wave_utf8(r,g,b,0,38,255,ligne,1,&_r,&_g,&_b);printf_RGB(_r,_g,_b,"┘\n");
 
-        printf_wave_utf8(178,0,255,0,38,255,"┌─ Top 5 des extention ──",1,&r,&g,&b);for(int i=0;i<(extMAX + nbrMAX + 15) - 25;i++){printf_wave_utf8(r,g,b,0,38,255,"─",1,&r,&g,&b);};printf_RGB(r,g,b,"┐\n");        
-        printf_wave_utf8(178,0,255,0,38,255,"| ",1,&r,&g,&b);printf_wave_utf8(r,g,b,0,38,255,g_extStats[0].ext,1,&r,&g,&b);for(int i=0;i<extMAX;i++){printf_wave_utf8(r,g,b,0,38,255," ",1,&r,&g,&b);};printf_wave_utf8(r,g,b,0,38,255,g_extStats[0].ext,1,&r,&g,&b);for(int i=0;i<nbrMAX;i++){printf_wave_utf8(r,g,b,0,38,255," ",1,&r,&g,&b);}
-        
-        
-        
-    }
+        if(g_nbExt == 0){
+            printf_wave_utf8(178,0,255,0,38,255,"┌─ Top 5 des extention ────┐\n",1,&r,&g,&b);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Aucune extention trouvé  │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────┘\n",1,NULL,NULL,NULL);
+            return;
+        }else{
+            printf_wave_utf8(255,255,0,0,255,128,"┌─ Top 5 des extention ──",1,&r,&g,&b);for(int i=0;i<(extMAX + nbrMAX + 4);i++){printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);};printf_RGB(r,g,b,"┐\n");
+            for(int i=0;i<topExt;i++){   
+                char* buffeur = (char*)calloc(50,sizeof(char));
+                char* num = intToString(i + 1);
+                if(i == 0){
+                    strcpy(buffeur, "│ ");
+                    strcat(buffeur, num);
+                    strcat(buffeur, "er  : ");
+                }else{
+                    strcpy(buffeur, "│ ");
+                    strcat(buffeur, num);
+                    strcat(buffeur, "eme : ");
+                }
+
+                free(num);
+                printf_wave_utf8(255,255,0,0,255,128,buffeur,1,&r,&g,&b);
+                printf_RGB(255,255,255,"%s",g_extStats[i].ext);
+                for(int y=0; y<extMAX - (int)strlen(g_extStats[i].ext); y++) printf(" ");
+                printf("  ");
+                printf_RGB(255,255,255,"%d",g_extStats[i].count);
+                for(int y=0; y<nbrMAX - nbDigit(g_extStats[i].count); y++) printf(" ");
+                printf("  ");
+                printBarre(15, (int)((float)g_extStats[i].count * 15.0f / (float)g_nbFILE));
+                printf_RGB(r,g,b," │\n");
+            }
+            printf_wave_utf8(255,255,0,0,255,128,"└────────────────────────",1,&r,&g,&b);for(int i=0;i<(extMAX + nbrMAX + 4);i++){printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);};printf_RGB(r,g,b,"┘\n");
+        }
+}
