@@ -124,6 +124,7 @@
     void addExt(char* ext);
     void triABulleExt();
     void addToTop10(Element element);
+    int strlenVis(const char* s);
 
     // Affichage
     void printf_RGB(int r, int g, int b, const char* format, ...);
@@ -965,6 +966,16 @@
         return NbSTR;
     }
 
+    int strlenVis(const char* s){
+        int count = 0;
+        const unsigned char* p = (const unsigned char*)s;
+        while(*p){
+            if((*p & 0xC0) != 0x80) count++;
+            p++;
+        }
+        return count;
+    }
+
     ///////////////////////////////////////////////////////////////
 
 
@@ -1223,100 +1234,133 @@
     }
 
     void printf_Stat(){
-        /*
-        ┌─ Information numérique ───────────────────────┐
-	    │  Nombre de repertoire ..:                     │
-        │  Nombre de fichier .....:                     │
-        │  Poid totale scanée ....:                     │
-	    └───────────────────────────────────────────────┘
-        */
-        // Valeut buffeur pour se repérée dans le rgb
         int r,g,b;
         int _r,_g,_b;
+        int r2,g2,b2;
         int buffeurChar = 0;
-
-        // Nombre MAXIMAL des valeur pour (nbr de char) pour aligné le tab
         int nbrMAX = 0;
-        // Same avec le nom des extention
         int extMAX = 0;
+        int fileMAX = 0;
+        int sizeMAX = 0;
+        int pathMAX = 0;
 
         int topExt = g_nbExt;
-        if(g_nbExt > 5){
-            topExt = 5;
-        }
+        if(g_nbExt > 5) topExt = 5;
 
-        // On récupère la valeur globale du scan et on la récup en valeur converti (GO/MO...)
         char* globalSize = getSizeStr(g_globalSize);
-        // On recip la taille en char du globalSize pour aligné le tab
         buffeurChar = (int)strlen(globalSize);
+        if(nbDigit(g_nbDIR)  > buffeurChar) buffeurChar = nbDigit(g_nbDIR);
+        if(nbDigit(g_nbFILE) > buffeurChar) buffeurChar = nbDigit(g_nbFILE);
 
-        //On chek quelle ets la valeur en char la plus grande
-        if(nbDigit(g_nbDIR) > buffeurChar){
-            buffeurChar = nbDigit(g_nbDIR);
-        }
-        // Same here
-        if(nbDigit(g_nbFILE) > buffeurChar){
-            buffeurChar = nbDigit(g_nbFILE);
-        }
-        // On fais la ligne de séparation
-        char* ligne = (char*)calloc((buffeurChar+1) * 3 + 4, sizeof(char));
+        char* ligne1 = (char*)calloc((buffeurChar+1) * 3 + 4, sizeof(char));
+        for(int i=0;i<buffeurChar+1;i++) strcat(ligne1, "─");
 
-        // On fais la ligne 
-        for(int i=0;i<buffeurChar+1;i++){
-            strcat(ligne, "─");
-        }
-
-        // On définit quelle extention est la plus longue
         for(int i=0;i<topExt;i++){
-            if((int)strlen(g_extStats[i].ext) > extMAX){
-                extMAX = (int)strlen(g_extStats[i].ext);
-            }
+            if(strlenVis(g_extStats[i].ext) > extMAX) extMAX = strlenVis(g_extStats[i].ext);
+            if(nbDigit(g_extStats[i].count) > nbrMAX) nbrMAX = nbDigit(g_extStats[i].count);
         }
 
-        // Same here
-        for(int i=0;i<topExt;i++){
-            if(nbDigit(g_extStats[i].count) > nbrMAX){
-                nbrMAX = nbDigit(g_extStats[i].count);
-            }
+        for(int i=0;i<10;i++){
+            if(g_topFiles[i].size == 0) break;
+            if(strlenVis(g_topFiles[i].name)    > fileMAX) fileMAX = strlenVis(g_topFiles[i].name);
+            if(strlenVis(g_topFiles[i].sizeStr) > sizeMAX) sizeMAX = strlenVis(g_topFiles[i].sizeStr);
+            if(strlenVis(g_topFiles[i].path)    > pathMAX) pathMAX = strlenVis(g_topFiles[i].path);
         }
 
-        printf_wave_utf8(178,0,255,0,38,255,"┌─ Information numérique ──",1,&r,&g,&b);printf_wave_utf8(r,g,b,0,38,255,ligne,1,&_r,&_g,&_b);printf_RGB(_r,_g,_b,"┐\n");
-        printf_wave_utf8(178,0,255,0,38,255,"│ Nombre de repertoire ..: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%d ",g_nbDIR);for(int i=0;i<buffeurChar - nbDigit(g_nbDIR);i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
-        printf_wave_utf8(178,0,255,0,38,255,"│ Nombre de fichier .....: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%d ",g_nbFILE);for(int i=0;i<buffeurChar - nbDigit(g_nbFILE);i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
-        printf_wave_utf8(178,0,255,0,38,255,"│ Poids totale scanée ...: ",1,NULL,NULL,NULL);printf_RGB(255,255,255,"%s ",getSizeStr(g_globalSize));for(int i=0;i<buffeurChar - (int)strlen(getSizeStr(g_globalSize));i++){printf(" ");};printf_RGB(_r,_g,_b,"│\n");
-        printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────",1,NULL,NULL,NULL);printf_wave_utf8(r,g,b,0,38,255,ligne,1,&_r,&_g,&_b);printf_RGB(_r,_g,_b,"┘\n");
+        // ┌─ Information numérique ──────┐
+        printf_wave_utf8(178,0,255,0,38,255,"┌─ Information numérique ──",1,&r,&g,&b);
+        printf_wave_utf8(r,g,b,0,38,255,ligne1,1,&_r,&_g,&_b);
+        printf_RGB(_r,_g,_b,"┐\n");
 
+        printf_wave_utf8(178,0,255,0,38,255,"│ Nombre de repertoire ..: ",1,NULL,NULL,NULL);
+        printf_RGB(255,255,255,"%d ",g_nbDIR);
+        for(int i=0;i<buffeurChar-nbDigit(g_nbDIR);i++) printf(" ");
+        printf_RGB(_r,_g,_b,"│\n");
+
+        printf_wave_utf8(178,0,255,0,38,255,"│ Nombre de fichier .....: ",1,NULL,NULL,NULL);
+        printf_RGB(255,255,255,"%d ",g_nbFILE);
+        for(int i=0;i<buffeurChar-nbDigit(g_nbFILE);i++) printf(" ");
+        printf_RGB(_r,_g,_b,"│\n");
+
+        printf_wave_utf8(178,0,255,0,38,255,"│ Poids totale scanée ...: ",1,NULL,NULL,NULL);
+        printf_RGB(255,255,255,"%s ",globalSize);
+        for(int i=0;i<buffeurChar-strlenVis(globalSize);i++) printf(" ");
+        printf_RGB(_r,_g,_b,"│\n");
+
+        printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────",1,NULL,NULL,NULL);
+        printf_wave_utf8(r,g,b,0,38,255,ligne1,1,&_r,&_g,&_b);
+        printf_RGB(_r,_g,_b,"┘\n");
+
+        // ┌─ Top 5 des extentions ───────┐
         if(g_nbExt == 0){
             printf_wave_utf8(178,0,255,0,38,255,"┌─ Top 5 des extention ────┐\n",1,&r,&g,&b);
             printf_wave_utf8(178,0,255,0,38,255,"│ Aucune extention trouvé  │\n",1,NULL,NULL,NULL);
             printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────┘\n",1,NULL,NULL,NULL);
-            return;
         }else{
-            printf_wave_utf8(255,255,0,0,255,128,"┌─ Top 5 des extention ──",1,&r,&g,&b);for(int i=0;i<(extMAX + nbrMAX + 4);i++){printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);};printf_RGB(r,g,b,"┐\n");
-            for(int i=0;i<topExt;i++){   
-                char* buffeur = (char*)calloc(50,sizeof(char));
-                char* num = intToString(i + 1);
-                if(i == 0){
-                    strcpy(buffeur, "│ ");
-                    strcat(buffeur, num);
-                    strcat(buffeur, "er  : ");
-                }else{
-                    strcpy(buffeur, "│ ");
-                    strcat(buffeur, num);
-                    strcat(buffeur, "eme : ");
-                }
+            printf_wave_utf8(255,255,0,0,255,128,"┌─ Top 5 des extention ──",1,&r,&g,&b);
+            for(int i=0;i<(extMAX+nbrMAX+4);i++) printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);
+            printf_RGB(r,g,b,"┐\n");
 
+            for(int i=0;i<topExt;i++){
+                char* buffeur = (char*)calloc(50,sizeof(char));
+                char* num = intToString(i+1);
+                if(i == 0){ strcpy(buffeur,"│ "); strcat(buffeur,num); strcat(buffeur,"er   : "); }
+                else       { strcpy(buffeur,"│ "); strcat(buffeur,num); strcat(buffeur,"eme  : "); }
                 free(num);
                 printf_wave_utf8(255,255,0,0,255,128,buffeur,1,&r,&g,&b);
+                free(buffeur);
                 printf_RGB(255,255,255,"%s",g_extStats[i].ext);
-                for(int y=0; y<extMAX - (int)strlen(g_extStats[i].ext); y++) printf(" ");
+                for(int y=0;y<extMAX-strlenVis(g_extStats[i].ext);y++) printf(" ");
                 printf("  ");
                 printf_RGB(255,255,255,"%d",g_extStats[i].count);
-                for(int y=0; y<nbrMAX - nbDigit(g_extStats[i].count); y++) printf(" ");
+                for(int y=0;y<nbrMAX-nbDigit(g_extStats[i].count);y++) printf(" ");
                 printf("  ");
-                printBarre(15, (int)((float)g_extStats[i].count * 15.0f / (float)g_nbFILE));
+                printBarre(15,(int)((float)g_extStats[i].count * 15.0f / (float)g_nbFILE));
                 printf_RGB(r,g,b," │\n");
             }
-            printf_wave_utf8(255,255,0,0,255,128,"└────────────────────────",1,&r,&g,&b);for(int i=0;i<(extMAX + nbrMAX + 4);i++){printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);};printf_RGB(r,g,b,"┘\n");
+
+            printf_wave_utf8(255,255,0,0,255,128,"└────────────────────────",1,&r,&g,&b);
+            for(int i=0;i<(extMAX+nbrMAX+4);i++) printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);
+            printf_RGB(r,g,b,"┘\n");
         }
-}
+
+        // ┌─ Top 10 des fichiers ────────┐
+        // prefix max = "│ 10eme : " = 10 chars visuels
+        int innerWidth = 10 + fileMAX + 2 + pathMAX + 2 + sizeMAX + 1;
+        int dashCount  = innerWidth - 22;
+        if(dashCount < 0) dashCount = 0;
+
+        printf_wave_utf8(255,0,128,255,128,0,"┌─ Top 10 des fichiers ──",1,&r2,&g2,&b2);
+        for(int i=0;i<dashCount-3;i++) printf_wave_utf8(r2,g2,b2,255,128,0,"─",1,&r2,&g2,&b2);
+        printf_wave_utf8(r2,g2,b2,255,128,0,"┐\n",1,&r2,&g2,&b2);
+
+        for(int i=0;i<10;i++){
+            if(g_topFiles[i].size == 0) break;
+            char* num = intToString(i+1);
+            char* buffeur = (char*)calloc(50,sizeof(char));
+            strcpy(buffeur,"│ ");
+            strcat(buffeur,num);
+            if(i == 0)      strcat(buffeur,"er   : "); // "1er   : " → total prefix = 10
+            else if(i == 9) strcat(buffeur,"eme : ");  // "10eme : " → total prefix = 10
+            else            strcat(buffeur,"eme  : "); // "Xeme  : " → total prefix = 10
+            free(num);
+            printf_wave_utf8(255,0,128,255,128,0,buffeur,1,&r2,&g2,&b2);
+            free(buffeur);
+            printf_RGB(255,255,255,"%s",g_topFiles[i].name);
+            for(int y=0;y<fileMAX-strlenVis(g_topFiles[i].name);y++) printf(" ");
+            printf("  ");
+            printf_RGB(255,255,255,"%s",g_topFiles[i].path);
+            for(int y=0;y<pathMAX-strlenVis(g_topFiles[i].path);y++) printf(" ");
+            printf("  ");
+            printf_RGB(255,255,255,"%s",g_topFiles[i].sizeStr);
+            for(int y=0;y<sizeMAX-strlenVis(g_topFiles[i].sizeStr);y++) printf(" ");
+            printf_RGB(r2,g2,b2," │\n");
+        }
+
+        printf_wave_utf8(255,0,128,255,128,0,"└────────────────────────",1,&r2,&g2,&b2);
+        for(int i=0;i<dashCount-3;i++) printf_wave_utf8(r2,g2,b2,255,128,0,"─",1,&r2,&g2,&b2);
+        printf_wave_utf8(r2,g2,b2,255,128,0,"┘\n",1,&r2,&g2,&b2);
+
+        free(ligne1);
+        free(globalSize);
+    }
