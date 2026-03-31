@@ -8,7 +8,7 @@
 typedef char* String;
 
 /* UPDATE 
- * - Ajout du param info
+ * - Ajout du param ban
 */
 
 /* TYPE DE DONNEE
@@ -48,9 +48,14 @@ typedef struct{
     int cutDepth;
     int cutLenght;
 
+    int banParam;
+    int nbBanParam;
+    char** banNameParam;
+
     int errorDouble;    // Erreur si l'utilisateur entre 2x le même param
     int errorNotValide; // Erreur si l'utilisateur entre un param invalide
     int errorCutEntry;  // Erreur si l'utilisateur fais un choix non valide du param Cut (deph = -1000 ou lenght 0) 
+    int errorBanEntry;  // Erreur si la liste de param ne prend pas en compte des nom de fichier (-ban puis plus rien comme param)
 
     int debug;
 }Param;
@@ -110,20 +115,21 @@ void sizeToGradientColor(long long size, int* r, int* g, int* b);
 int main(int argc, char *argv[]) {
 
     if(argc == 1 || strcmp(argv[1],"-info") == 0){
-        printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project  V8 ─────────────────────────────────────────┐\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project  V9 ─────────────────────────────────────────┐\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras) │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.  │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ Usage: CTree <path> [options]                               │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ Ex   : CTree ./myFolder -deep -cut 3 10                     │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -path ....: Show path of each file                          │\n",1);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -size ....: Show size of directories and files              │\n",1);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -deep ....: Show both size and path                         │\n",1);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -cut X Y .: Limit depth and/or length of the tree           │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -path .....: Show path of each file                         │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -size .....: Show size of directories and files             │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -deep .....: Show both size and path                        │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -cut X Y ..: Limit depth and/or length of the tree          │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                    │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                    │\n",1);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -debug ...: Debug mode (in case of error)                   │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                       │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                   │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"└─────────────────────────────────────────────────────────────┘\n",1);
 
         return 0;
@@ -146,23 +152,37 @@ int main(int argc, char *argv[]) {
     }
 
     if(p.debug){
-         printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght);
+         printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d -ban = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam);
+         printf_RGB(0,0,255,"Ban list : [");
+        for(int i = 0; i < p.nbBanParam; i++){
+            if(i == p.nbBanParam - 1){
+                printf_RGB(0,0,255, "%s", p.banNameParam[i]);   // dernier : sans virgule
+            } else {
+                printf_RGB(0,0,255, "%s, ", p.banNameParam[i]); // autres : avec virgule
+            }
+        }
+         printf_RGB(0,0,255,"]\n");
          printf_RGB(255,0,0,"errorDouble = %d errorNotValide = %d errorCutEntry = %d\n\n",p.errorDouble,p.errorNotValide,p.errorCutEntry);
     }
 
     // Détection des erreur...
     if(p.errorDouble == 1){
-        printf_RGB(255,0,0,"[!] Error : Doublon dans les paramétre détecter !\n");
+        printf_RGB(255,0,0,"[!] Error : duplicate detected !\n");
         _break = 1;
     }if(p.errorNotValide == 1 || p.errorCutEntry == 1){
-        printf_RGB(255,0,0,"[!] error : Erreur dans les paramétre détercter !\n");
-        printf_RGB(255,0,0,"            -size => affichage du poids de chaque fichier\n");
-        printf_RGB(255,0,0,"            -path => affichage du path de chaque fichier\n");
-        printf_RGB(255,0,0,"            -deep => afficher le poids et le path du fichier\n");
-        printf_RGB(255,0,0,"            -cut  => activée le mode cutting (Défaut = 10)\n");
-        printf_RGB(255,0,0,"                -depthX  => Définit la profondeur max a X\n");
-        printf_RGB(255,0,0,"                -lenghtY => Définit la longeur max a Y\n");
+        printf_RGB(255,0,0,"[!] error : Error inside of the parameter declaration  !\n");
+        printf_RGB(255,0,0,"            -size => Show the size of a file or a directory\n");
+        printf_RGB(255,0,0,"            -path => Show the path of a file or a directory\n");
+        printf_RGB(255,0,0,"            -deep => Show the size & the path\n");
+        printf_RGB(255,0,0,"            -cut  => cut a part of the tree\n");
+        printf_RGB(255,0,0,"                -depthX  => max depth of the tree\n");
+        printf_RGB(255,0,0,"                -lenghtY => max Lenght of the tree\n");
+        printf_RGB(255,0,0,"            -ban => Ban name from the tree \n");
+        printf_RGB(255,0,0,"            -debug => Show the debug of the tree \n");
         _break = 1;
+    }if(p.errorBanEntry == 1){
+        printf_RGB(255,0,0,"[!] error : Error from the ban parameter  !\n");
+        printf_RGB(255,0,0,"            Make sure to put at least one \n");
     }
     if(_break == 1){
         return 1;
@@ -364,6 +384,25 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
     int nbElement = directory.nbDir + directory.nbFile;
     int nbDir = directory.nbDir;
 
+    // Gestion du dernier élément ban
+    int indexLastVisible = nbElement;
+    int _break = 0;
+    if(p.banParam == 1){
+        for(int i=nbElement-1;i>=0;i--){
+            int banned = 0;
+            for(int y=0;y<p.nbBanParam;y++){
+                if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
+                    banned = 1;
+                    break;
+                }
+            }
+            if(!banned){ // non-banni = c'est le dernier visible
+                indexLastVisible = i;
+                break;
+            }
+        }
+    }
+
     int indexLenght = 0;
 
     int IndexDir = 0;
@@ -378,11 +417,29 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
                     printf_RGB(0,0,255," And %d other file ... \n",directory.nbFile-p.cutLenght);
                 }
                 continue;
-            }   
+            }
+
+            // Gestion des bans
+            int found = 0;
+            if(p.banParam == 1){
+                for(int y=0;y<p.nbBanParam;y++){
+                    if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+
+            if(found == 1){
+                continue;
+            }
+
             // Gestion des prefixe passée
             printf("%s",prefix);
             // Gestion de la logique des prefixe actuelle
             if(i == nbElement - 1){
+                printf("└── ");
+            }else if(i == indexLastVisible ){
                 printf("└── ");
             }else{
                 printf("├── ");
@@ -429,8 +486,25 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
             printf("\n");
             indexLenght++;
         }else if(directory.elements[i].type == T_DIR){
+            // Gestion des bans
+            int found = 0;
+            if(p.banParam == 1){
+                for(int y=0;y<p.nbBanParam;y++){
+                    if(strcmp(directory.elements[i].name,p.banNameParam[y]) == 0){
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+            if(found == 1){
+                IndexDir ++;
+                continue;
+            }
+
             printf("%s",prefix);
             if(i == nbElement - 1){
+                printf("└── ");
+            }else if(i == indexLastVisible ){
                 printf("└── ");
             }else{
                 printf("├── ");
@@ -479,7 +553,7 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
             printf("\n");
             String NewPrefix = (String)calloc(4096,sizeof(char));
             strcpy(NewPrefix,prefix);
-            if(i == nbElement - 1){
+            if(i == nbElement - 1 || i == indexLastVisible){
                 strcat(NewPrefix,"   ");
             }else{
                 strcat(NewPrefix,"│  ");
@@ -578,6 +652,9 @@ Param getParameter(int argc,char* argv[]){
     param.cutLenght = 10;
 
     param.debug = 0;
+    param.banParam = 0;
+
+
     for(int i = 2; i < argc; i++) {
         if(strcmp(argv[i], "-path") == 0) {
             if(param.pathParam) {
@@ -634,6 +711,27 @@ Param getParameter(int argc,char* argv[]){
                 param.errorDouble = 1;
             }else{
                 param.debug = 1;
+            }
+        } else if(strcmp(argv[i], "-ban") == 0) {
+            if(i + 1 >= argc || argv[i+1][0] == '-'){
+                param.errorBanEntry = 1;
+            }else{
+                param.banParam = 1;
+                int indexParamBan = i + 1;
+                param.nbBanParam = 0;
+                while(indexParamBan < argc){
+                    if(argv[indexParamBan][0] == '-') break;
+                    param.nbBanParam++;
+                    indexParamBan++;
+                }
+                param.banNameParam = (char**)calloc(param.nbBanParam, sizeof(char*));
+                int index = 0;
+                for(int y = i+1; y < indexParamBan; y++){
+                    param.banNameParam[index] = calloc(strlen(argv[y]) + 1, sizeof(char));
+                    strcpy(param.banNameParam[index], argv[y]);
+                    index++;
+                }
+                i = indexParamBan - 1;  // ← MANQUANT, sauter les args consommés
             }
         } else {
             param.errorNotValide = 1;

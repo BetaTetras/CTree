@@ -1,13 +1,13 @@
 # 🌳 | Ctree
 ![Badge Langage](https://img.shields.io/badge/Langage%20:-C-blue?style=plastic)
 ![Badge Licence](https://img.shields.io/badge/Licence%20:-MIT-darkblue?style=plastic)
-![Badge Version](https://img.shields.io/badge/Version%20:-v4.2-lim?style=plastic)
+![Badge Version](https://img.shields.io/badge/Version%20:-v4.3-lim?style=plastic)
 ![Badge OS](https://img.shields.io/badge/OS%20:-LINUX-blue?style=plastic)
 ![Badge État](https://img.shields.io/badge/État%20%3A-Released-green?style=plastic)
 
 **CTree** est un outil de visualisation d'arborescence de répertoire Linux
 
-## 📋 | Fonctionnalités de CTree v4.2
+## 📋 | Fonctionnalités de CTree v4.3
 
 | **Paramètres & Fonctionnalités**                                              | **Version** |
 |-------------------------------------------------------------------------------|:-----------:|
@@ -23,6 +23,7 @@
 | **`-size`** Affichage du poids de chaque fichier et répertoire                | `v4.0`      |
 | **`-deep`** Affichage combiné du chemin et du poids                           | `v4.0`      |
 | **`-cut X Y`** Limite la profondeur et la longueur de l'arbre                 | `v4.2`      |
+| **`-ban [...]`** Exclusion de fichiers ou dossiers de l'arbre                 | `v4.3`      |
 | **`-debug`** Mode debug pour diagnostiquer les erreurs                        | `v4.2`      |
 | **`-info`** Menu d'aide intégré                                               | `v4.2`      |
 | [🔩] *Technique*                                                              |             |
@@ -37,21 +38,21 @@
 | **`sizeToGradientColor()`** Couleur dynamique selon le poids du fichier       | `v4.0`      |
 | **`printf_RGB()`** Fonction d'affichage coloré RGB                            | `v3.0`      |
 | **Protection** contre les doubles slashs dans les chemins                     | `v4.2`      |
-| Allocation mémoire agrandie de 1024 → 4096                                    | `v4.2`      |
+| **`indexLastVisible`** Gestion correcte du dernier élément non banni          | `v4.3`      |
 
 ## ⚙️ | Fonctionnement et déploiement
 
 ### Requis :
-- *v4.2* - N'importe quel PC sous Linux (*gcc* conseillée)
+- *v4.3* - N'importe quel PC sous Linux (*gcc* conseillée)
 
 ### Compilation :
 ```bash
 gcc CTree.c -o CTree
-./CTree <path> [-size] [-path] [-deep] [-cut X Y] [-debug]
+./CTree <path> [-size] [-path] [-deep] [-cut X Y] [-ban fichier1 fichier2...] [-debug]
 ```
 
 ## 💡 | Remarques
-**CTree v4.2** est la version où `-cut` est enfin fonctionnel après deux versions de préparation. L'ajout de `-info`, `-debug` et `_atoi()` rendent le programme plus robuste et plus facile à utiliser et à diagnostiquer.
+**CTree v4.3** ajoute le paramètre `-ban` qui permet d'exclure des fichiers ou dossiers de l'arborescence. La gestion du dernier élément visible est aussi corrigée pour tenir compte des éléments bannis.
 
 ## 📜 | Licence
 Ce projet est sous licence **MIT** – Vous pouvez faire un peu ce que vous voulez tant que je suis crédité.
