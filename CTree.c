@@ -8,9 +8,7 @@
 typedef char* String;
 
 void printf_RGB(int r, int g, int b, const char* format, ...);
-
 void printf_wave_utf8(int r1, int g1, int b1,int r2, int g2, int b2,const char* text,int step);
-
 void sizeToGradientColor(long long size, int* r, int* g, int* b);
 
 /* TYPE DE DONNEE
@@ -23,6 +21,10 @@ typedef enum {
     T_UNKN  // Fichier non standare ou non reconnue (cas d'echec principalement)
 } ElementType;
 
+/* TAILLE DES FICHIER 
+ * Enum résument les différente taille disponibre 
+ * Octet ; KiloOctet ; MegaOctet ; GigaOctet ; TeraOctete
+*/
 typedef enum {
     O,
     KO,
@@ -31,6 +33,11 @@ typedef enum {
     TO
 } ElementSizeCategory;
 
+/* STRUCTURE DES PARAMETRE
+ * Résumé des différent paramétre d'entrée pour une utilisation booleain dans les fonction utile 
+ * Presque tout les valeur son des int "booleain" (0 ou 1) sauf pour deph et lenght qui sont de
+ * entier standare
+*/
 typedef struct{
     int sizeParam;
     int pathParam;
@@ -38,12 +45,16 @@ typedef struct{
     int deepParam;
 
     int cutParam;
-    int depthCutParam;
     int lengthCutParam;
+    int depthCutParam;
 
-    int errorDouble;
-    int errorNotValide;
+    int errorDouble;    // Erreur si l'utilisateur entre 2x le même param
+    int errorNotValide; // Erreur si l'utilisateur entre un param invalide
+    int errorCutEntry;  // Erreur si l'utilisateur fais un choix non valide du param Cut (deph = -1000 ou lenght 0) 
 }Param;
+
+int g_depthIndex = 0;
+int g_lenghtIndex = 0;
 
 /* TYPE DE FICHIER
  * chaque elemnt (fichier ou repetoire)) on leur propre data comme leur nom , le path ainsi que leur
@@ -76,10 +87,12 @@ struct Directory{
 };
 
 
+// Fonction primaire 
 Directory scanDirectory(Element element);
 void echoDirectory(Directory directory,String prefix,Param p,int depth);
 void freeDirectory(Directory* dir);
 
+// Fonction secondaire
 Param getParameter(int argc, char *argv[]);
 ElementSizeCategory getSizeCategory(long long size);
 double getDirectorySize(Directory dir);
@@ -89,29 +102,36 @@ int depthCount(String path);
 ////////////////////////////////////////////////////////////////
 
 int main(int argc, char *argv[]) {
-    // Si le nombre de param est < 2 ou > 3 => Erreur, pas valable
+    // Si le nombre de param est < 2 pas valable
     if(argc < 2){
         printf_RGB(255,0,0,"[!] Error : Mauvaise utilisation de la commande\n");
         return 1;
     }
 
+    // Booleain de vérification des erreur paramétrique 
     int _break = 0;
-    Param p;
+    // Struc des paramétre nommée "p"
+    Param p;    
+    p.depthCutParam = 10;  // On set une valeur par défault
+    p.lengthCutParam = 10; // ''
 
+    // Si l'utilisateur a entrée des param alors on lance la fonction getParameter qui vas analisée les entrée des param et determinée les param
     if(argc > 2){
         p = getParameter(argc,argv);
     }
 
-
+    // Détection des erreur...
     if(p.errorDouble == 1){
         printf_RGB(255,0,0,"[!] Error : Doublon dans les paramétre détecter !\n");
         _break = 1;
     }if(p.errorNotValide == 1){
         printf_RGB(255,0,0,"[!] error : Erreur dans les paramétre détercter !\n");
-        printf_RGB(255,0,0,"            s => affichage du poid de chaque fichier\n");
-        printf_RGB(255,0,0,"            p => affichage du path de chaque fichier\n");
-        printf_RGB(255,0,0,"            d => ...\n");
-        printf_RGB(255,0,0,"            c => affichage simplifier pour les plus gros arbres\n");
+        printf_RGB(255,0,0,"            -size => affichage du poids de chaque fichier\n");
+        printf_RGB(255,0,0,"            -path => affichage du path de chaque fichier\n");
+        printf_RGB(255,0,0,"            -deep => afficher le poids et le path du fichier\n");
+        printf_RGB(255,0,0,"            -cut  => activée le mode cutting (Défaut = 10)\n");
+        printf_RGB(255,0,0,"                -depthX  => Définit la profondeur max a X\n");
+        printf_RGB(255,0,0,"                -lenghtY => Définit la longeur max a Y\n");
         _break = 1;
     }
     if(_break == 1){
@@ -159,73 +179,97 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-
-
 ////////////////////////////////////////////////////////////////
-
+/* SCANDIRECTORY
+ * Fonction qui prend en paramétre un élément (rappelle : ligne 62), avec les data de ce dernier il vas l'analysée en le prenant comme un
+ * répertoire et vas définire ces caractéristique (path, liste d'élement ...).
+ * Permettre de mettre en place la liste arborifique des fichier avec une liste d'élement et un appelle récursive de cette fonction en cas
+ * de rencontre d'un autre répertoire
+*/
 Directory scanDirectory(Element element){
-    DIR *dir;  
-    Directory NewDirectory;
+    DIR *dir; // On définit un pointeur de type DIR
+    Directory NewDirectory; // On instanci une struct de type directory nommée NewDirecory car c'est le directory qu'on vas analysée
 
-    //On alloue de la place pour le path du directory parent
+    // Allocation d'un espace de stockage pour le path de ce dernier qui est égale au path de l'élement mis en paramétre 
     NewDirectory.path = calloc(1024,sizeof(char));
     strcpy(NewDirectory.path,element.path);
     
-    // Depuis le path de l'élement parent on détermine sa profondeur (Le nombre de /);
+    // Depuis le path de l'élement parent on détermine sa profondeur (Le nombre de /)
     NewDirectory.depth = depthCount(NewDirectory.path);
 
+    // Set up des valeur de base 
     NewDirectory.nbDir = 0;
     NewDirectory.nbFile = 0;
 
+    // Création de la struct data qui est le cusrseur dans le fichier 
     struct dirent *data;
 
+    // On ouvre le fichier qui se trouve dans le path de l'élément passée en param
     dir = opendir(NewDirectory.path);
 
+    // Tant qu'on peut lire dans le répertoire 
     while((data = readdir(dir)) != NULL){
+        // On saute "." (Répertoire courant) et ".." (Répertoire parent)
         if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0){
             continue;
         }else{
-            if(data->d_type == DT_DIR){
+            
+            if(data->d_type == DT_DIR){             // Si le type rencontrée est un répertoire on augmenre le compteur associer
                 NewDirectory.nbDir ++;
-            }else if(data->d_type == DT_REG){
+            }else if(data->d_type == DT_REG){       // Si le type rencontrée est un fichier on augmenre le compteur associer
                 NewDirectory.nbFile ++;
-            }else if(data->d_type == DT_UNKNOWN){
+            }else if(data->d_type == DT_UNKNOWN){   // Si le type rencontrée n'est pas reconnue alors on le saute (Eviter les erreur)
                 continue;
             }
         }
     }
+    // On réinitilalise le curseur
     rewinddir(dir);
+    // On crée donc la liste d'élements qu'il y'a dans le répertoire
     NewDirectory.elements = calloc(NewDirectory.nbDir + NewDirectory.nbFile,sizeof(Element));
+    // Pareil avec la liste de répertoire 
     NewDirectory.Directorys = calloc(NewDirectory.nbDir,sizeof(Directory));
 
+    // Index pour se repérée
     int i = 0;
+    // Index des répertoire 
     int IndexDire = 0;
+    // Tant qu'on peut lire dans le répertoire
     while((data = readdir(dir)) != NULL){
+        // On saute "." (Répertoire courant) et ".." (Répertoire parent)
         if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0){
             continue;
         }
-
+        // On renconte un nouvelle élément !
+        // On crée un espace de stockage pour sont nom et on affecte le nom effectife de ce fichier avec d_name
         NewDirectory.elements[i].name = calloc(1024,sizeof(char));
         strcpy(NewDirectory.elements[i].name, data->d_name);
         
+        // On détermine sont path grace au path de l'élément mis en paramétre + son nom effectife
         NewDirectory.elements[i].path = calloc(1024,sizeof(char));
         strcpy(NewDirectory.elements[i].path,NewDirectory.path);
         strcat(NewDirectory.elements[i].path,"/");
         strcat(NewDirectory.elements[i].path,NewDirectory.elements[i].name);
 
+        // Si l'élement rencontrée est un répertoire alors ...
         if(data->d_type == DT_DIR){
+            // On définis sont type dans la strcuture en définisant cette élement comme une répertoire
             NewDirectory.elements[i].type = T_DIR;
 
             // Scanner le sous-répertoire
             Directory subDir = scanDirectory(NewDirectory.elements[i]);
+            // On affecte se sous répertoire a la liste des répertoire du répertoire parent
             NewDirectory.Directorys[IndexDire] = subDir;
             IndexDire++;
 
             // Calculer la taille réelle du sous-répertoire
             double dirSize = getDirectorySize(subDir);
+            // On définit sa taille 
             NewDirectory.elements[i].size = dirSize;
+            // On définit sa taille adaptée (O,KO,GO,TB...)
             NewDirectory.elements[i].sizeCategory = getSizeCategory((long long)dirSize);
 
+            // Selon le resultat de la taille choisi on converti les octet brute en valeur correspondant
             switch(NewDirectory.elements[i].sizeCategory) {
                 case O:  
                     NewDirectory.elements[i].sizeConverted = dirSize;
@@ -290,7 +334,7 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
     int IndexDir = 0;
 
     for(int i=0;i<nbElement;i++){
-
+    
         int last = (i == nbElement - 1);
         
         printf("%s",prefix);
@@ -428,7 +472,7 @@ double getDirectorySize(Directory dir) {
     
     // Additionner seulement les FICHIERS du répertoire courant
     for(int i = 0; i < dir.nbFile + dir.nbDir; i++) {
-        if(dir.elements[i].type == T_FILE) {  // ← Ajoute cette condition !
+        if(dir.elements[i].type == T_FILE) {
             totalSize += dir.elements[i].size;
         }
     }
@@ -441,8 +485,7 @@ double getDirectorySize(Directory dir) {
     return totalSize;
 }
 
-ElementSizeCategory getSizeCategory(long long size)
-{
+ElementSizeCategory getSizeCategory(long long size){
     const long long  SIZE_KO = 1024LL;
     const long long  SIZE_MO = 1024LL * 1024LL;
     const long long  SIZE_GO = 1024LL * 1024LL * 1024LL;
@@ -488,6 +531,7 @@ Param getParameter(int argc,char* argv[]){
                 param.errorDouble = 1;
             } else {
                 param.cutParam = 1;
+                
             }
         } else if(strcmp(argv[i], "-deep") == 0) {
             if(param.deepParam || param.pathParam || param.sizeParam) {

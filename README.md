@@ -1,13 +1,13 @@
 # 🌳 | Ctree
 ![Badge Langage](https://img.shields.io/badge/Langage%20:-C-blue?style=plastic)
 ![Badge Licence](https://img.shields.io/badge/Licence%20:-MIT-darkblue?style=plastic)
-![Badge Version](https://img.shields.io/badge/Version%20:-v4.0-lim?style=plastic)
+![Badge Version](https://img.shields.io/badge/Version%20:-v4.1-lim?style=plastic)
 ![Badge OS](https://img.shields.io/badge/OS%20:-LINUX-blue?style=plastic)
 ![Badge État](https://img.shields.io/badge/État%20%3A-Released-green?style=plastic)
 
 **CTree** est un outil de visualisation d'arborescence de répertoire Linux
 
-## 📋 | Fonctionnalités de CTree v4.0
+## 📋 | Fonctionnalités de CTree v4.1
 
 | **Paramètres & Fonctionnalités**                                              | **Version** |
 |-------------------------------------------------------------------------------|:-----------:|
@@ -32,11 +32,13 @@
 | **`printf_wave_utf8()`** Affichage en dégradé de couleur                      | `v4.0`      |
 | **`sizeToGradientColor()`** Couleur dynamique selon le poids du fichier       | `v4.0`      |
 | **`printf_RGB()`** Fonction d'affichage coloré RGB                            | `v3.0`      |
+| **`g_depthIndex` / `g_lenghtIndex`** Index globaux pour le futur `-cut`       | `v4.1`      |
+| **`errorCutEntry`** Détection d'erreur sur les paramètres de `-cut`           | `v4.1`      |
 
 ## ⚙️ | Fonctionnement et déploiement
 
 ### Requis :
-- *v4.0* - N'importe quel PC sous Linux (*gcc* conseillée)
+- *v4.1* - N'importe quel PC sous Linux (*gcc* conseillée)
 
 ### Compilation :
 ```bash
@@ -45,7 +47,7 @@ gcc CTree.c -o CTree
 ```
 
 ## 💡 | Remarques
-**CTree v4.0** est une version majeure sur le plan visuel — les dégradés de couleur sur les tailles et les paths rendent l'arborescence bien plus lisible. La syntaxe des paramètres passe définitivement aux mots-clés (`-size`, `-path`, `-deep`) ce qui casse la compatibilité avec la v3.0.
+**CTree v4.1** est une version de préparation — elle pose les bases techniques pour l'implémentation du `-cut` qui arrive dans la prochaine version, avec l'ajout des index globaux et de la détection d'erreur associée.
 
 ## 📜 | Licence
 Ce projet est sous licence **MIT** – Vous pouvez faire un peu ce que vous voulez tant que je suis crédité.
