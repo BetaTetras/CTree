@@ -8,7 +8,7 @@
 typedef char* String;
 
 /* UPDATE 
- * - Ajout du param ban
+ * - Ajout du paramétre search
 */
 
 /* TYPE DE DONNEE
@@ -52,10 +52,15 @@ typedef struct{
     int nbBanParam;
     char** banNameParam;
 
+    int searchParam;
+    int nbSearchParam;
+    char** searchNameParam;
+
     int errorDouble;    // Erreur si l'utilisateur entre 2x le même param
     int errorNotValide; // Erreur si l'utilisateur entre un param invalide
     int errorCutEntry;  // Erreur si l'utilisateur fais un choix non valide du param Cut (deph = -1000 ou lenght 0) 
     int errorBanEntry;  // Erreur si la liste de param ne prend pas en compte des nom de fichier (-ban puis plus rien comme param)
+    int errorSearchEntry;
 
     int debug;
 }Param;
@@ -109,13 +114,14 @@ int _atoi(char *input);
 void printf_RGB(int r, int g, int b, const char* format, ...);
 void printf_wave_utf8(int r1, int g1, int b1,int r2, int g2, int b2,const char* text,int step);
 void sizeToGradientColor(long long size, int* r, int* g, int* b);
+void printf_RGB_BG(int fr, int fg, int fb, int br, int bg, int bb, const char* format, ...);
 
 ////////////////////////////////////////////////////////////////
 
 int main(int argc, char *argv[]) {
 
     if(argc == 1 || strcmp(argv[1],"-info") == 0){
-        printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project  V9 ─────────────────────────────────────────┐\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v10 ─────────────────────────────────────────┐\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras) │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.  │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1);
@@ -129,7 +135,7 @@ int main(int argc, char *argv[]) {
         printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                    │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                    │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                       │\n",1);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                   │\n",1);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                  │\n",1);
         printf_wave_utf8(178,0,255,0,38,255,"└─────────────────────────────────────────────────────────────┘\n",1);
 
         return 0;
@@ -144,7 +150,7 @@ int main(int argc, char *argv[]) {
     // Booleain de vérification des erreur paramétrique 
     int _break = 0;
     // Struc des paramétre nommée "p"
-    Param p;    
+    Param p = {0};    
 
     // Si l'utilisateur a entrée des param alors on lance la fonction getParameter qui vas analisée les entrée des param et determinée les param
     if(argc > 2){
@@ -152,8 +158,8 @@ int main(int argc, char *argv[]) {
     }
 
     if(p.debug){
-         printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d -ban = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam);
-         printf_RGB(0,0,255,"Ban list : [");
+        printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d -ban = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam);
+        printf_RGB(0,0,255,"Ban list : [");
         for(int i = 0; i < p.nbBanParam; i++){
             if(i == p.nbBanParam - 1){
                 printf_RGB(0,0,255, "%s", p.banNameParam[i]);   // dernier : sans virgule
@@ -161,15 +167,26 @@ int main(int argc, char *argv[]) {
                 printf_RGB(0,0,255, "%s, ", p.banNameParam[i]); // autres : avec virgule
             }
         }
-         printf_RGB(0,0,255,"]\n");
-         printf_RGB(255,0,0,"errorDouble = %d errorNotValide = %d errorCutEntry = %d\n\n",p.errorDouble,p.errorNotValide,p.errorCutEntry);
+        printf_RGB(0,0,255,"]\n");
+        printf_RGB(255,0,255,"Search : [");
+        for(int i = 0; i < p.nbSearchParam; i++){
+            if(i == p.nbSearchParam - 1){
+                printf_RGB(0,0,255, "%s", p.searchNameParam[i]);   // dernier : sans virgule
+            } else {
+                printf_RGB(0,0,255, "%s, ", p.searchNameParam[i]); // autres : avec virgule
+            }
+        }
+        printf_RGB(255,0,255,"]\n");
+        printf_RGB(255,0,0,"errorDouble = %d errorNotValide = %d errorCutEntry = %d\n\n",p.errorDouble,p.errorNotValide,p.errorCutEntry);
     }
 
     // Détection des erreur...
     if(p.errorDouble == 1){
         printf_RGB(255,0,0,"[!] Error : duplicate detected !\n");
-        _break = 1;
-    }if(p.errorNotValide == 1 || p.errorCutEntry == 1){
+        return 1;
+    }
+    
+    if(p.errorNotValide == 1 || p.errorCutEntry == 1){
         printf_RGB(255,0,0,"[!] error : Error inside of the parameter declaration  !\n");
         printf_RGB(255,0,0,"            -size => Show the size of a file or a directory\n");
         printf_RGB(255,0,0,"            -path => Show the path of a file or a directory\n");
@@ -179,14 +196,21 @@ int main(int argc, char *argv[]) {
         printf_RGB(255,0,0,"                -lenghtY => max Lenght of the tree\n");
         printf_RGB(255,0,0,"            -ban => Ban name from the tree \n");
         printf_RGB(255,0,0,"            -debug => Show the debug of the tree \n");
-        _break = 1;
-    }if(p.errorBanEntry == 1){
-        printf_RGB(255,0,0,"[!] error : Error from the ban parameter  !\n");
-        printf_RGB(255,0,0,"            Make sure to put at least one \n");
-    }
-    if(_break == 1){
         return 1;
     }
+    
+    if(p.errorBanEntry == 1){
+        printf_RGB(255,0,0,"[!] error : Error from the ban parameter  !\n");
+        printf_RGB(255,0,0,"            Make sure to put at least one \n");
+        return 1;
+    }
+
+    if(p.errorSearchEntry == 1){
+        printf_RGB(255,0,0,"[!] error : Error from the search parameter !\n");
+        printf_RGB(255,0,0,"            Make sure to put at least one \n");
+        return 1;
+    }
+
 
     // Création du pointeur vers le fichier
     DIR *dir;
@@ -380,6 +404,11 @@ Directory scanDirectory(Element element){
     return NewDirectory;
 }
 
+/* echoDirectory
+ * Fonction qui prend en paramétre un directory a traitée ainsi que le "prefix" (L'arborésence actuelle du directory)
+ * ainsi que la profondeur du directory.
+ * Permet d'afficher l'arborésence aisni que traiter les paramétre entrée par l'utilisateur.
+*/
 void echoDirectory(Directory directory,String prefix,Param p,int depth){
     int nbElement = directory.nbDir + directory.nbFile;
     int nbDir = directory.nbDir;
@@ -404,7 +433,6 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
     }
 
     int indexLenght = 0;
-
     int IndexDir = 0;
 
     for(int i=0;i<nbElement;i++){
@@ -445,36 +473,79 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
                 printf("├── ");
             }
 
-            // Affichage du nom
-            printf("%s ",directory.elements[i].name);
+           int isSearched = 0;
+            if(p.searchParam == 1){
+                for(int y=0; y<p.nbSearchParam; y++){
+                    if(strcmp(p.searchNameParam[y], directory.elements[i].name) == 0){
+                        isSearched = 1;
+                        printf_RGB_BG(0,0,0,255,255,255," %s ",directory.elements[i].name);
+                    }
+                }
+                if(!isSearched){
+                    printf("%s ",directory.elements[i].name);
+                }
+            }else{
+                printf("%s ",directory.elements[i].name);
+            }
             if(p.pathParam == 1){
-                String bufferName = (String)calloc(strlen(directory.elements[i].path) + 4,sizeof(char));
-                strcat(bufferName,directory.elements[i].path);
-                strcat(bufferName,"   ");
-                // printf_wave_utf8(0,0,255,255,0,255,bufferName,2);
-                printf_RGB(0,128,255,bufferName);
-                free(bufferName);
+                printf(" ");
+                if(isSearched == 1){
+                    printf_RGB_BG(0,0,0,0,128,255," %s ",directory.elements[i].path);
+                }else{
+                    printf_RGB(0,128,255,"%s ",directory.elements[i].path);
+                }
             }if(p.sizeParam == 1){
+                printf(" ");
                 int r,g,b;
                 sizeToGradientColor(directory.elements[i].size, &r, &g, &b);
                 switch(directory.elements[i].sizeCategory){
                     case O:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"O ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"O   ");
                     break;
                     case KO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"KO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"KO   ");
                     break;
                     case MO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"MO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"MO   ");
                     break;
                     case GO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"GO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"GO   ");
                     break;
                     case TO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"TO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"TO   ");
                     break;
@@ -510,38 +581,83 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
                 printf("├── ");
             }
 
-            printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
+            int isSearched = 0;
+            if(p.searchParam == 1){
+                for(int y=0;y<p.nbSearchParam;y++){
+                    if(strcmp(p.searchNameParam[y],directory.elements[i].name) == 0){
+                        isSearched = 1;
+                        printf_RGB_BG(0,0,0,0,255,0," %s ",directory.elements[i].name);
+                    }
+                }
+                if(!isSearched){
+                    printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
+                }
+            }else{
+                printf_RGB(0,255,0,"%s  ",directory.elements[i].name);
+            }
+
             if(p.cutParam && depth >= p.cutDepth){
                 printf_RGB(0,0,255,"[Cuted]  ");
             }
             if(p.pathParam == 1){
-                String bufferName = (String)calloc(strlen(directory.elements[i].path) + 4,sizeof(char));
-                strcat(bufferName,directory.elements[i].path);
-                strcat(bufferName,"   ");
-                // printf_wave_utf8(255,127,0,0,127,255,bufferName,2);
-                printf_RGB(255,128,0,bufferName);
-                free(bufferName);
+                printf(" ");
+                if(isSearched == 1){
+                    printf_RGB_BG(0,0,0,255,128,0," %s ",directory.elements[i].path);
+                }else{
+                    printf_RGB(255,128,0,"%s ",directory.elements[i].path);
+                }
             }if(p.sizeParam == 1){
+                printf(" ");
                 int r,g,b;
                 sizeToGradientColor(directory.elements[i].size, &r, &g, &b);
                 switch(directory.elements[i].sizeCategory){
                     case O:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"O ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"O   ");
                     break;
                     case KO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b, "%.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"KO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"KO   ");
                     break;
                     case MO:
-                        printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
-                        printf_RGB(r,g,b,"MO   ");
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"MO ");
+                            printf(" ");
+                            break;
+                        }
+                        printf_RGB(r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                        printf_RGB(r,g,b,"MO ");
                     break;
                     case GO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"GO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"GO   ");
                     break;
                     case TO:
+                        if(isSearched == 1){
+                            printf_RGB_BG(0,0,0,r,g,b," %.2f ",directory.elements[i].sizeConverted);
+                            printf_RGB_BG(0,0,0,r,g,b,"TO ");
+                            printf(" ");
+                            break;
+                        }
                         printf_RGB(r,g,b,"%.2f ",directory.elements[i].sizeConverted);
                         printf_RGB(r,g,b,"TO   ");
                     break;
@@ -571,6 +687,9 @@ void echoDirectory(Directory directory,String prefix,Param p,int depth){
     }
 }
 
+/* freeDirectory
+ * Fonction qui libére tout les allocation d'un répertoire passée en paramétre, a utlisée a la fin
+*/
 void freeDirectory(Directory* dir) {
     for(int i=0;i<dir->nbDir;i++)
         freeDirectory(&dir->Directorys[i]);
@@ -583,7 +702,9 @@ void freeDirectory(Directory* dir) {
     free(dir->path);
 }
 
-
+/* depthCount
+ * Fonction qui donne la profondeur d'un fichier depuis son path
+*/
 int depthCount(String path){
     int depth = 0;
     int i = 0;
@@ -601,6 +722,9 @@ int depthCount(String path){
     return depth;
 }
 
+/* getDirectorySize
+ * Donne le poids d'un répertoire
+*/
 double getDirectorySize(Directory dir) {
     double totalSize = 0.0;
     
@@ -619,6 +743,9 @@ double getDirectorySize(Directory dir) {
     return totalSize;
 }
 
+/* getSizeCategory
+ * Donne la catégorie du poids d'un fichier
+*/
 ElementSizeCategory getSizeCategory(long long size){
     const long long  SIZE_KO = 1024LL;
     const long long  SIZE_MO = 1024LL * 1024LL;
@@ -636,24 +763,29 @@ ElementSizeCategory getSizeCategory(long long size){
     else
         return TO;
 }
-
+/* getParameter
+ * Traite les paramétre passée en paramétre a l'appelle de la fonction et renvois une structure
+ * décrivant tout les paramétre associée 
+*/
 Param getParameter(int argc,char* argv[]){
     Param param;
-    param.errorDouble = 0;
-    param.errorNotValide = 0;
-    param.errorCutEntry = 0;
+    param.errorDouble      = 0;
+    param.errorNotValide   = 0;
+    param.errorCutEntry    = 0;
+    param.errorBanEntry    = 0;
+    param.errorSearchEntry = 0;
 
-    param.sizeParam = 0;
-    param.pathParam = 0;
-    param.deepParam = 0;
-    param.cutParam = 0;
+    param.sizeParam   = 0;
+    param.pathParam   = 0;
+    param.deepParam   = 0;
+    param.cutParam    = 0;
 
-    param.cutDepth = 10;
-    param.cutLenght = 10;
+    param.cutDepth    = 10;
+    param.cutLenght   = 10;
 
-    param.debug = 0;
-    param.banParam = 0;
-
+    param.debug       = 0;
+    param.banParam    = 0;
+    param.searchParam = 0;
 
     for(int i = 2; i < argc; i++) {
         if(strcmp(argv[i], "-path") == 0) {
@@ -733,7 +865,28 @@ Param getParameter(int argc,char* argv[]){
                 }
                 i = indexParamBan - 1;  // ← MANQUANT, sauter les args consommés
             }
-        } else {
+        } else if(strcmp(argv[i], "-search") == 0) {
+            if(i + 1 >= argc || argv[i+1][0] == '-'){
+                param.errorSearchEntry = 1;
+            }else{
+                param.searchParam = 1;
+                int indexParamSearch = i + 1;
+                param.nbSearchParam = 0;
+                while(indexParamSearch < argc){
+                    if(argv[indexParamSearch][0] == '-') break;
+                    param.nbSearchParam++;
+                    indexParamSearch++;
+                }
+                param.searchNameParam = (char**)calloc(param.nbSearchParam, sizeof(char*));
+                int index = 0;
+                for(int y = i+1; y < indexParamSearch; y++){
+                    param.searchNameParam[index] = calloc(strlen(argv[y]) + 1, sizeof(char));
+                    strcpy(param.searchNameParam[index], argv[y]);
+                    index++;
+                }
+                i = indexParamSearch - 1;  // ← MANQUANT, sauter les args consommés
+            }
+        }else{
             param.errorNotValide = 1;
         }
 
@@ -746,6 +899,9 @@ Param getParameter(int argc,char* argv[]){
     return param;
 }
 
+/* _atoi
+ * ma version de atoi par ce que j'adore réinventais la roue lol
+*/
 int _atoi(char *input){
     if (input == NULL || input[0] == '\0')
         return -32767;
@@ -779,6 +935,7 @@ int _atoi(char *input){
 
 
 ///////////////////////////////////////////////////////////////
+
 
 void printf_RGB(int r, int g, int b, const char* format, ...) {
     va_list args;
@@ -882,4 +1039,13 @@ void sizeToGradientColor(long long size, int* r, int* g, int* b) {
     *r = (int)(r0 + (r1 - r0) * ratio);
     *g = (int)(g0 + (g1 - g0) * ratio);
     *b = (int)(b0 + (b1 - b0) * ratio);
+}
+
+void printf_RGB_BG(int fr, int fg, int fb, int br, int bg, int bb, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    printf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm", fr, fg, fb, br, bg, bb);
+    vprintf(format, args);
+    printf("\033[0m");
+    va_end(args);
 }
