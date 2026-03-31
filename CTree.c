@@ -6,85 +6,190 @@
 
 typedef char* String;
 
+typedef enum {
+    T_FILE,
+    T_DIR
+} ElementType;
+
+// Type des fichiée
 typedef struct{
     String name;
-    int type;
+    ElementType type;
+    String path;
+}Element;
+
+//Type des répertoire
+typedef struct Directory Directory;
+struct Directory{
+    Element *elements;
+    Directory *Directorys;
     String path;
     int depth;
-}FileEntry;
+    int nbDir;
+    int nbFile;
+};
 
 void printf_GREEN(char* Text,...);
-void printDIR(FileEntry *Tree,int nbElement,String parentPath);
+
+Directory scanDirectory(Element element);
+void echoDirectory(Directory directorys,int depth);
+void freeDirectory(Directory* dir);
+
+int depthCount(String path);
 
 
 ////////////////////////////////////////////////////////////////
 
-int main(void){
+int main(int argc, char *argv[]) {
+    if(argc > 2 && argc != 1){
+        printf("[!] Error : UN argument autoriser (PATH)\n");
+    }
+
     DIR *dir;
-    const String PATH = "./";
     struct dirent *data;
 
-    String bufferFileName = (String)calloc(256,sizeof(char));
-    int nbFile = 0;
-    int nbDir = 0;
+    String PATH = (String)calloc(256,sizeof(char));
+    strcpy(PATH,argv[1]);
 
     dir = opendir(PATH);
-
-    while((data = readdir(dir)) != NULL){
-        strcpy(bufferFileName,data->d_name);
-        if(strcmp(bufferFileName,".") == 0 || strcmp(bufferFileName,"..") == 0){
-            continue;
-        }else{
-            if(data->d_type == DT_DIR){
-                nbDir++;
-            }else if(data->d_type == DT_REG){
-                nbFile ++;
-            }
-        }
+    if(!dir){
+        printf("%s: No such directory\n",argv[1]);
+        return 1;
     }
-    rewinddir(dir);
-    FileEntry *Tree = calloc(nbDir+nbFile,sizeof(FileEntry));
+    closedir(dir);
 
-    int i = 0;
-    while((data = readdir(dir)) != NULL){
-        if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0)
-            continue;
+    Element parent;
+    parent.name = PATH;
+    parent.path = PATH;
+    parent.type = T_DIR;
 
-        Tree[i].name = calloc(256,sizeof(char));
-        strcpy(Tree[i].name, data->d_name);
+    Directory Dir = scanDirectory(parent);
+    printf_GREEN("%s\n",parent.name);
+    echoDirectory(Dir,0);
 
-        if(data->d_type == DT_DIR){
-            Tree[i].type = 1;
-        }
-        else if(data->d_type == DT_REG){
-            Tree[i].type = 0;
-        }
-            
-        i++;
-    }
-
-    printDIR(Tree, nbDir+nbFile,PATH);
-
+    freeDirectory(&Dir);
+    free(PATH);
     return 0;
 }
 
 
+
 ////////////////////////////////////////////////////////////////
 
-void printDIR(FileEntry *Tree,int nbElement,String parentPath){
+Directory scanDirectory(Element element){
+    DIR *dir;
+    Directory NewDirectory;
 
-    printf_GREEN(parentPath);
-    printf("\n");
+    NewDirectory.path = calloc(256,sizeof(char));
+    strcpy(NewDirectory.path,element.path);
+    
+    NewDirectory.depth = depthCount(NewDirectory.path);
+
+    NewDirectory.nbDir = 0;
+    NewDirectory.nbFile = 0;
+
+    struct dirent *data;
+
+    dir = opendir(NewDirectory.path);
+
+    while((data = readdir(dir)) != NULL){
+        if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0){
+            continue;
+        }else{
+            if(data->d_type == DT_DIR){
+                NewDirectory.nbDir ++;
+            }else if(data->d_type == DT_REG){
+                NewDirectory.nbFile ++;
+            }
+        }
+    }
+    rewinddir(dir);
+    NewDirectory.elements = calloc(NewDirectory.nbDir + NewDirectory.nbFile,sizeof(Element));
+    NewDirectory.Directorys = calloc(NewDirectory.nbDir,sizeof(Directory));
+
+    int i = 0;
+    int IndexDire = 0;
+    while((data = readdir(dir)) != NULL){
+        if(strcmp(data->d_name, ".") == 0 || strcmp(data->d_name, "..") == 0){
+            continue;
+        }
+
+        NewDirectory.elements[i].name = calloc(256,sizeof(char));
+        strcpy(NewDirectory.elements[i].name, data->d_name);
+        
+        NewDirectory.elements[i].path = calloc(256,sizeof(char));
+        strcpy(NewDirectory.elements[i].path,NewDirectory.path);
+        strcat(NewDirectory.elements[i].path,"/");
+        strcat(NewDirectory.elements[i].path,NewDirectory.elements[i].name);
+
+        if(data->d_type == DT_DIR){
+            NewDirectory.elements[i].type = T_DIR;
+            NewDirectory.Directorys[IndexDire] = scanDirectory(NewDirectory.elements[i]);
+            IndexDire ++;
+        }else if(data->d_type == DT_REG){
+            NewDirectory.elements[i].type = T_FILE;
+        }
+        i++;
+    }
+    closedir(dir);
+    return NewDirectory;
+}
+
+void echoDirectory(Directory directory,int depth){
+    int nbElement = directory.nbDir + directory.nbFile;
+    int nbDir = directory.nbDir;
+
+    int IndexDir = 0;
 
     for(int i=0;i<nbElement;i++){
-        if(Tree[i].type == 1){
-            printf_GREEN("    %s\n",Tree[i].name);
-        }else if(Tree[i].type == 0){
-            printf("    %s\n",Tree[i].name);
+
+        for(int d = 0; d < depth; d++){
+            printf("   ");
+        }
+        
+        if(directory.elements[i].type == T_FILE){
+            if(i == nbElement - 1){
+                printf("L_%s\n",directory.elements[i].name);
+            }else{
+                printf("| %s\n",directory.elements[i].name);
+            }
+        }else if(directory.elements[i].type == T_DIR){
+            printf_GREEN("L %s\n",directory.elements[i].name);
+            echoDirectory(directory.Directorys[IndexDir],depth + 1);
+            IndexDir++;
         }
     }
 }
 
+void freeDirectory(Directory* dir) {
+    for(int i=0;i<dir->nbDir;i++)
+        freeDirectory(&dir->Directorys[i]);
+    for(int i=0;i<dir->nbDir + dir->nbFile;i++) {
+        free(dir->elements[i].name);
+        free(dir->elements[i].path);
+    }
+    free(dir->elements);
+    free(dir->Directorys);
+    free(dir->path);
+}
+
+
+int depthCount(String path){
+    int depth = 0;
+    int i = 0;
+
+    if(path[i] == '.' && path[i+1] == '/'){
+            i = 2;
+        }
+
+    for(;i<strlen(path);i++){
+        if(path[i] == '/'){
+            depth ++;
+        }
+    }
+
+    return depth;
+}
 
 void printf_GREEN(char* Text,...){
     va_list Args;
