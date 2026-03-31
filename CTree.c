@@ -7,11 +7,6 @@
 
     typedef char* String;
 
-    /* UPDATE 
-    * - Ajout du paramétre stats
-    *   => Ajout des extention
-    */
-
     /* TYPE DE DONNEE
     * Pour savoir qu'elle type de fichier on vas avoir en face je préfère faire mon propre type pour
     * prévoire les cas envisagable
@@ -109,6 +104,9 @@
     Element g_topFiles[10];
     int g_topFilesInit = 0;
 
+    Element* g_searchedElements = NULL;
+    int g_searchedElementsIndex = 0;
+
     // Fonction primaire 
     Directory scanDirectory(Element element,Param p);
     void echoDirectory(Directory directory,String prefix,Param p,int depth);
@@ -125,6 +123,7 @@
     void triABulleExt();
     void addToTop10(Element element);
     int strlenVis(const char* s);
+    int strpartcmp(char* src, char* str);
 
     // Affichage
     void printf_RGB(int r, int g, int b, const char* format, ...);
@@ -132,6 +131,7 @@
     void sizeToGradientColor(long long size, int* r, int* g, int* b);
     void printf_RGB_BG(int fr, int fg, int fb, int br, int bg, int bb, const char* format, ...);
     void printf_Stat();
+    void printf_debug(Param p);
     int* print_rainbow(int* rgb, float brightness, const char* string, int pas, int sens, int max);
     void printBarre(int _Size, int value);
 
@@ -140,22 +140,23 @@
     int main(int argc, char *argv[]) {
 
         if(argc == 1 || strcmp(argv[1],"-info") == 0){
-            printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v11 ─────────────────────────────────────────┐\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras) │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.  │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Usage: CTree <path> [options]                               │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ Ex   : CTree ./myFolder -deep -cut 3 10                     │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│                                                             │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -path .....: Show path of each file                         │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -size .....: Show size of directories and files             │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -deep .....: Show both size and path                        │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -cut X Y ..: Limit depth and/or length of the tree          │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                    │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                    │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                       │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                  │\n",1,NULL,NULL,NULL);
-            printf_wave_utf8(178,0,255,0,38,255,"└─────────────────────────────────────────────────────────────┘\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"┌─ CTree project v5.1 ─────────────────────────────────────────┐\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Coded with <3 by BetaTetras (https://github.com/BetaTetras)  │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Tree folder visualizer made in C with specific parameters.   │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│                                                              │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Usage: CTree <path> [options]                                │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ Ex   : CTree ./myFolder -deep -cut 3 10                      │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│                                                              │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -path ......: Show path of each file                         │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -size ......: Show size of directories and files             │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -deep ......: Show both size and path                        │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -cut X Y ...: Limit depth and/or length of the tree          │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                     │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                     │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                        │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -stats .....: Debug mode (in case of error)                  │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                   │\n",1,NULL,NULL,NULL);
+            printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────────────────────────────────────────┘\n",1,NULL,NULL,NULL);
 
             return 0;
         }
@@ -169,34 +170,14 @@
         // Booleain de vérification des erreur paramétrique 
         int _break = 0;
         // Struc des paramétre nommée "p"
-        Param p = {0};    
+        Param p = {0};  
+        
+        // Init tu tab des Info concenée cherchée 
+        g_searchedElements = (Element*)calloc(2,sizeof(Element));
 
         // Si l'utilisateur a entrée des param alors on lance la fonction getParameter qui vas analisée les entrée des param et determinée les param
         if(argc > 2){
             p = getParameter(argc,argv);
-        }
-
-        if(p.debug){
-            printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d -ban = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam);
-            printf_RGB(0,0,255,"Ban list : [");
-            for(int i = 0; i < p.nbBanParam; i++){
-                if(i == p.nbBanParam - 1){
-                    printf_RGB(0,0,255, "%s", p.banNameParam[i]);   // dernier : sans virgule
-                } else {
-                    printf_RGB(0,0,255, "%s, ", p.banNameParam[i]); // autres : avec virgule
-                }
-            }
-            printf_RGB(0,0,255,"]\n");
-            printf_RGB(255,0,255,"Search : [");
-            for(int i = 0; i < p.nbSearchParam; i++){
-                if(i == p.nbSearchParam - 1){
-                    printf_RGB(255,0,255, "%s", p.searchNameParam[i]);   // dernier : sans virgule
-                } else {
-                    printf_RGB(255,0,255, "%s, ", p.searchNameParam[i]); // autres : avec virgule
-                }
-            }
-            printf_RGB(255,0,255,"]\n");
-            printf_RGB(255,0,0,"errorDouble = %d errorNotValide = %d errorCutEntry = %d errorBanEntry = %d errorSearchEntry = %d\n\n",p.errorDouble,p.errorNotValide,p.errorCutEntry,p.errorBanEntry,p.errorSearchEntry);
         }
 
         // Détection des erreur...
@@ -213,7 +194,8 @@
             printf_RGB(255,0,0,"            -cut  => cut a part of the tree\n");
             printf_RGB(255,0,0,"                -depthX  => max depth of the tree\n");
             printf_RGB(255,0,0,"                -lenghtY => max Lenght of the tree\n");
-            printf_RGB(255,0,0,"            -ban => Ban name from the tree \n");
+            printf_RGB(255,0,0,"            -ban   => Ban name from the tree \n");
+            printf_RGB(255,0,0,"            -stats => Show directory datas\n");
             printf_RGB(255,0,0,"            -debug => Show the debug of the tree \n");
             return 1;
         }
@@ -265,27 +247,15 @@
         */
 
         Directory Dir = scanDirectory(parent,p);
+        if(p.debug == 1){
+            printf_debug(p);
+        }
         printf_RGB(0,255,0,"%s\n",parent.name); // On affiche le path parent
         if(p.statsParam == 0){
             echoDirectory(Dir,"",p,0);
         }else{
             triABulleExt();
-
             printf_Stat();
-            /*
-            printf("\nNombre de fichier .....: %d\n",g_nbFILE);
-            printf("Nombre de repertoire ..: %d\n",g_nbDIR);
-            printf("Taille totale lue .....: %s\n\n",getSizeStr(g_globalSize));
-            printf("\nTop 10 des fichies : \n");
-            for(int i=0;i<10;i++){
-                if(g_topFiles[i].size == 0) break;
-                printf("    %d : %s - %s\n", i+1, g_topFiles[i].path, g_topFiles[i].sizeStr);
-            }
-            printf("\nTop 10 des extention : \n");
-            for(int i=0;i<10;i++){
-                printf("    %d : %s - %d\n",i+1,g_extStats[i].ext,g_extStats[i].count);
-            }
-            */
         }
         
 
@@ -355,7 +325,26 @@
                 strcat(NewDirectory.elements[i].path, "/");
             }
             strcat(NewDirectory.elements[i].path,NewDirectory.elements[i].name);
-
+            if(p.searchParam == 1){
+                if(p.cutParam == 1){
+                    for(int y = 0; y < p.nbSearchParam; y++){
+                        if(strcmp(NewDirectory.elements[i].name, p.searchNameParam[y]) == 0 && (NewDirectory.depth > p.cutDepth)){
+                            g_searchedElements = realloc(g_searchedElements, (g_searchedElementsIndex + 1) * sizeof(Element));
+                            g_searchedElements[g_searchedElementsIndex] = NewDirectory.elements[i];
+                            g_searchedElementsIndex++;
+                        }
+                    }
+                }
+                if(p.banParam == 1){
+                    for(int y = 0; y < p.nbBanParam; y++){
+                        if(strpartcmp(NewDirectory.elements[i].path,p.banNameParam[y])){
+                            g_searchedElements = realloc(g_searchedElements, (g_searchedElementsIndex + 1) * sizeof(Element));
+                            g_searchedElements[g_searchedElementsIndex] = NewDirectory.elements[i];
+                            g_searchedElementsIndex++;
+                        }
+                    }
+                }
+            }
             // Si l'élement rencontrée est un répertoire alors ...
             if(data->d_type == DT_DIR){
                 // On définis sont type dans la strcuture en définisant cette élement comme une répertoire
@@ -901,21 +890,38 @@
     * Insère un élément dans le top 10 des fichiers les plus lourds
     * O(1) par fichier, pas de stockage de tous les fichiers
     */
-    void addToTop10(Element element){
+    void addToTop10(Element element) {
         if(!g_topFilesInit){
             for(int i=0;i<10;i++) g_topFiles[i].size = 0;
             g_topFilesInit = 1;
         }
         if(element.size <= g_topFiles[9].size) return;
+        
+        // Dupliquer les strings avant insertion
+        Element copy = element;
+        copy.name    = strdup(element.name);
+        copy.path    = strdup(element.path);
+        copy.sizeStr = strdup(element.sizeStr);
+        copy.ext     = strdup(element.ext);
+        
         for(int i=0;i<10;i++){
-            if(element.size > g_topFiles[i].size){
-                for(int y=9;y>i;y--){
-                    g_topFiles[y] = g_topFiles[y-1];
+            if(copy.size > g_topFiles[i].size){
+                // Libérer l'élément éjecté s'il est valide
+                if(g_topFiles[9].size > 0){
+                    free(g_topFiles[9].name);
+                    free(g_topFiles[9].path);
+                    free(g_topFiles[9].sizeStr);
+                    free(g_topFiles[9].ext);
                 }
-                g_topFiles[i] = element;
+                for(int y=9;y>i;y--)
+                    g_topFiles[y] = g_topFiles[y-1];
+                g_topFiles[i] = copy;
                 return;
             }
         }
+        // Si pas inséré, libérer la copie
+        free(copy.name); free(copy.path);
+        free(copy.sizeStr); free(copy.ext);
     }
 
     int nbDigit(int nb){
@@ -974,6 +980,25 @@
             p++;
         }
         return count;
+    }
+
+    int strpartcmp(char* src, char* str) {
+        int srcLen = (int)strlen(src);
+        int strLen = (int)strlen(str);
+
+        for (int i = 0; i <= srcLen - strLen; i++) {
+            if (src[i] == str[0]) {
+                int match = 1;
+                for (int y = 1; y < strLen; y++) {
+                    if (src[i + y] != str[y]) {
+                        match = 0;
+                        break;
+                    }
+                }
+                if (match) return 1;
+            }
+        }
+        return 0;
     }
 
     ///////////////////////////////////////////////////////////////
@@ -1297,7 +1322,7 @@
             printf_wave_utf8(178,0,255,0,38,255,"│ Aucune extention trouvé  │\n",1,NULL,NULL,NULL);
             printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────┘\n",1,NULL,NULL,NULL);
         }else{
-            printf_wave_utf8(255,255,0,0,255,128,"┌─ Top 5 des extention ──",1,&r,&g,&b);
+            printf_wave_utf8(255,255,0,0,255,128,"┌─ Top 5 des extention ───",1,&r,&g,&b);
             for(int i=0;i<(extMAX+nbrMAX+4);i++) printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);
             printf_RGB(r,g,b,"┐\n");
 
@@ -1319,7 +1344,7 @@
                 printf_RGB(r,g,b," │\n");
             }
 
-            printf_wave_utf8(255,255,0,0,255,128,"└────────────────────────",1,&r,&g,&b);
+            printf_wave_utf8(255,255,0,0,255,128,"└─────────────────────────",1,&r,&g,&b);
             for(int i=0;i<(extMAX+nbrMAX+4);i++) printf_wave_utf8(r,g,b,0,255,128,"─",1,&r,&g,&b);
             printf_RGB(r,g,b,"┘\n");
         }
@@ -1363,4 +1388,44 @@
 
         free(ligne1);
         free(globalSize);
+    }
+
+    
+    void printf_debug(Param p){
+        if(p.debug){
+            printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d -ban = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam);
+            if(p.banParam == 1){
+                printf_RGB(0,0,255,"Ban list : [");
+                for(int i = 0; i < p.nbBanParam; i++){
+                    if(i == p.nbBanParam - 1){
+                        printf_RGB(0,0,255, "%s", p.banNameParam[i]);   // dernier : sans virgule
+                    } else {
+                        printf_RGB(0,0,255, "%s, ", p.banNameParam[i]); // autres : avec virgule
+                    }
+                }
+                printf_RGB(0,0,255,"]\n");
+            }
+            if(p.searchParam == 1){
+                printf_RGB(255,0,255,"Search : [");
+                for(int i = 0; i < p.nbSearchParam; i++){
+                    if(i == p.nbSearchParam - 1){
+                        printf_RGB(255,0,255, "%s", p.searchNameParam[i]);   // dernier : sans virgule
+                    } else {
+                        printf_RGB(255,0,255, "%s, ", p.searchNameParam[i]); // autres : avec virgule
+                    }
+                }
+                printf_RGB(255,0,255,"]\n");
+            }
+
+            printf_RGB(255,0,255,"Element searched but cuted or ban : [");
+            for(int i = 0; i < g_searchedElementsIndex; i++){
+                if(i == g_searchedElementsIndex - 1){
+                    printf_RGB(0,0,255, "%s", g_searchedElements[i].path);
+                } else {
+                    printf_RGB(0,0,255, "%s, ",g_searchedElements[i].path);
+                }
+            }
+            printf_RGB(255,0,255,"]\n");
+            printf_RGB(255,0,0,"errorDouble = %d errorNotValide = %d errorCutEntry = %d errorBanEntry = %d errorSearchEntry = %d\n\n",p.errorDouble,p.errorNotValide,p.errorCutEntry,p.errorBanEntry,p.errorSearchEntry);
+        }
     }
