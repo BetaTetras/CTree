@@ -8,7 +8,8 @@ typedef char* String;
 
 typedef enum {
     T_FILE,
-    T_DIR
+    T_DIR,
+    T_UNKN
 } ElementType;
 
 // Type des fichiée
@@ -30,9 +31,10 @@ struct Directory{
 };
 
 void printf_GREEN(char* Text,...);
+void printf_RED(char* Text,...);
 
 Directory scanDirectory(Element element);
-void echoDirectory(Directory directorys,int depth);
+void echoDirectory(Directory directory,String prefix,int depth);
 void freeDirectory(Directory* dir);
 
 int depthCount(String path);
@@ -48,7 +50,7 @@ int main(int argc, char *argv[]) {
     DIR *dir;
     struct dirent *data;
 
-    String PATH = (String)calloc(256,sizeof(char));
+    String PATH = (String)calloc(1024,sizeof(char));
     strcpy(PATH,argv[1]);
 
     dir = opendir(PATH);
@@ -65,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     Directory Dir = scanDirectory(parent);
     printf_GREEN("%s\n",parent.name);
-    echoDirectory(Dir,0);
+    echoDirectory(Dir,"",0);
 
     freeDirectory(&Dir);
     free(PATH);
@@ -80,7 +82,7 @@ Directory scanDirectory(Element element){
     DIR *dir;
     Directory NewDirectory;
 
-    NewDirectory.path = calloc(256,sizeof(char));
+    NewDirectory.path = calloc(1024,sizeof(char));
     strcpy(NewDirectory.path,element.path);
     
     NewDirectory.depth = depthCount(NewDirectory.path);
@@ -100,6 +102,8 @@ Directory scanDirectory(Element element){
                 NewDirectory.nbDir ++;
             }else if(data->d_type == DT_REG){
                 NewDirectory.nbFile ++;
+            }else if(data->d_type == DT_UNKNOWN){
+                continue;
             }
         }
     }
@@ -114,10 +118,10 @@ Directory scanDirectory(Element element){
             continue;
         }
 
-        NewDirectory.elements[i].name = calloc(256,sizeof(char));
+        NewDirectory.elements[i].name = calloc(1024,sizeof(char));
         strcpy(NewDirectory.elements[i].name, data->d_name);
         
-        NewDirectory.elements[i].path = calloc(256,sizeof(char));
+        NewDirectory.elements[i].path = calloc(1024,sizeof(char));
         strcpy(NewDirectory.elements[i].path,NewDirectory.path);
         strcat(NewDirectory.elements[i].path,"/");
         strcat(NewDirectory.elements[i].path,NewDirectory.elements[i].name);
@@ -128,6 +132,8 @@ Directory scanDirectory(Element element){
             IndexDire ++;
         }else if(data->d_type == DT_REG){
             NewDirectory.elements[i].type = T_FILE;
+        }else{
+            NewDirectory.elements[i].type = T_UNKN;
         }
         i++;
     }
@@ -135,7 +141,7 @@ Directory scanDirectory(Element element){
     return NewDirectory;
 }
 
-void echoDirectory(Directory directory,int depth){
+void echoDirectory(Directory directory,String prefix,int depth){
     int nbElement = directory.nbDir + directory.nbFile;
     int nbDir = directory.nbDir;
 
@@ -143,20 +149,31 @@ void echoDirectory(Directory directory,int depth){
 
     for(int i=0;i<nbElement;i++){
 
-        for(int d = 0; d < depth; d++){
-            printf("   ");
+        int last = (i == nbElement - 1);
+        
+        printf("%s",prefix);
+
+        if(last){
+            printf("└── ");
+        }else{
+            printf("├── ");
         }
         
         if(directory.elements[i].type == T_FILE){
-            if(i == nbElement - 1){
-                printf("L_%s\n",directory.elements[i].name);
-            }else{
-                printf("| %s\n",directory.elements[i].name);
-            }
+            printf("%s\n",directory.elements[i].name);
         }else if(directory.elements[i].type == T_DIR){
-            printf_GREEN("L %s\n",directory.elements[i].name);
-            echoDirectory(directory.Directorys[IndexDir],depth + 1);
+            printf_GREEN("%s\n",directory.elements[i].name);
+            String NewPrefix = (String)calloc(1024,sizeof(char));
+            strcpy(NewPrefix,prefix);
+            if(last){
+                strcat(NewPrefix,"   ");
+            }else{
+                strcat(NewPrefix,"|  ");
+            }
+            echoDirectory(directory.Directorys[IndexDir],NewPrefix,depth + 1);
             IndexDir++;
+        }else if(directory.elements[i].type == DT_UNKNOWN){
+            printf_RED("%s\n",directory.elements[i].name);
         }
     }
 }
@@ -216,6 +233,37 @@ void printf_GREEN(char* Text,...){
             }
         }else{
             printf("\033[1;32m%c\033[0m",Text[i]);
+        }
+    }
+
+    va_end(Args);
+}
+
+void printf_RED(char* Text,...){
+    va_list Args;
+    va_start(Args,Text);
+
+    for(int i=0;i<(int)strlen(Text);i++){
+        if(Text[i] == '%'){
+            if(Text[i+1] == 'd'){
+                int _int = va_arg(Args,int);
+                printf("\033[1;31m%d\033[0m",_int);
+                i ++;
+            }else if(Text[i+1] == 'f'){
+                double _double = va_arg(Args,double);
+                printf("\033[1;31m%f\033[0m",_double);
+                i ++;
+            }else if(Text[i+1] == 's'){
+                char* _String = va_arg(Args,char*);
+                printf("\033[1;31m%s\033[0m",_String);
+                i ++;
+            }else if(Text[i+1] == 'c'){
+                int _char = va_arg(Args,int);
+                printf("\033[1;31m%c\033[0m",_char);
+                i++;
+            }
+        }else{
+            printf("\033[1;31m%c\033[0m",Text[i]);
         }
     }
 
