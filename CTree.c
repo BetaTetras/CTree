@@ -98,12 +98,15 @@
     int g_nbFILE = 0;
     long long int g_globalSize = 0;
 
+    // Tableau des info des extention
     ExtStat* g_extStats = NULL;
     int g_nbExt = 0;
     
+    // Tableau des éléments les plus lourd
     Element g_topFiles[10];
     int g_topFilesInit = 0;
 
+    // Tableau des élement recherche non-afficher 
     Element* g_searchedElements = NULL;
     int g_searchedElementsIndex = 0;
 
@@ -132,6 +135,7 @@
     void printf_RGB_BG(int fr, int fg, int fb, int br, int bg, int bb, const char* format, ...);
     void printf_Stat();
     void printf_debug(Param p);
+    void printf_searched(Param p);
     int* print_rainbow(int* rgb, float brightness, const char* string, int pas, int sens, int max);
     void printBarre(int _Size, int value);
 
@@ -250,12 +254,17 @@
         if(p.debug == 1){
             printf_debug(p);
         }
+
         printf_RGB(0,255,0,"%s\n",parent.name); // On affiche le path parent
-        if(p.statsParam == 0){
-            echoDirectory(Dir,"",p,0);
-        }else{
+        echoDirectory(Dir,"",p,0);
+
+        printf("\n\n");
+        if(p.statsParam == 1){
             triABulleExt();
             printf_Stat();
+        }
+        if(p.searchParam == 1){
+            printf_searched(p);
         }
         
 
@@ -325,26 +334,6 @@
                 strcat(NewDirectory.elements[i].path, "/");
             }
             strcat(NewDirectory.elements[i].path,NewDirectory.elements[i].name);
-            if(p.searchParam == 1){
-                if(p.cutParam == 1){
-                    for(int y = 0; y < p.nbSearchParam; y++){
-                        if(strcmp(NewDirectory.elements[i].name, p.searchNameParam[y]) == 0 && (NewDirectory.depth > p.cutDepth)){
-                            g_searchedElements = realloc(g_searchedElements, (g_searchedElementsIndex + 1) * sizeof(Element));
-                            g_searchedElements[g_searchedElementsIndex] = NewDirectory.elements[i];
-                            g_searchedElementsIndex++;
-                        }
-                    }
-                }
-                if(p.banParam == 1){
-                    for(int y = 0; y < p.nbBanParam; y++){
-                        if(strpartcmp(NewDirectory.elements[i].path,p.banNameParam[y])){
-                            g_searchedElements = realloc(g_searchedElements, (g_searchedElementsIndex + 1) * sizeof(Element));
-                            g_searchedElements[g_searchedElementsIndex] = NewDirectory.elements[i];
-                            g_searchedElementsIndex++;
-                        }
-                    }
-                }
-            }
             // Si l'élement rencontrée est un répertoire alors ...
             if(data->d_type == DT_DIR){
                 // On définis sont type dans la strcuture en définisant cette élement comme une répertoire
@@ -387,6 +376,17 @@
                 NewDirectory.elements[i].type = T_UNKN;
                 NewDirectory.elements[i].sizeStr = NULL;
                 NewDirectory.elements[i].size = 0;
+            }
+
+            // On récupére les Element recherchée pour l'afficher dans les info 
+            if(p.searchParam == 1){
+                for(int y = 0; y < p.nbSearchParam; y++){
+                    if(strcmp(NewDirectory.elements[i].name, p.searchNameParam[y]) == 0){
+                        g_searchedElements = realloc(g_searchedElements, (g_searchedElementsIndex + 1) * sizeof(Element));
+                        g_searchedElements[g_searchedElementsIndex] = NewDirectory.elements[i];
+                        g_searchedElementsIndex++;
+                    }
+                }
             }
             i++;
         }
@@ -1042,9 +1042,9 @@
             else if (c >= 0xC0) bytes = 2;
 
             // gradient
-            r = r1 + (r2 - r1) * index / (char_count - 1);
-            g = g1 + (g2 - g1) * index / (char_count - 1);
-            b = b1 + (b2 - b1) * index / (char_count - 1);
+            r = (char_count > 1) ? r1 + (r2 - r1) * index / (char_count - 1) : r1;
+            g = (char_count > 1) ? g1 + (g2 - g1) * index / (char_count - 1) : g1;
+            b = (char_count > 1) ? b1 + (b2 - b1) * index / (char_count - 1) : b1;
 
             // step
             if (r1 < r2) r += step * index; else r -= step * index;
@@ -1416,16 +1416,70 @@
                 }
                 printf_RGB(255,0,255,"]\n");
             }
-
-            printf_RGB(255,0,255,"Element searched but cuted or ban : [");
-            for(int i = 0; i < g_searchedElementsIndex; i++){
-                if(i == g_searchedElementsIndex - 1){
-                    printf_RGB(0,0,255, "%s", g_searchedElements[i].path);
-                } else {
-                    printf_RGB(0,0,255, "%s, ",g_searchedElements[i].path);
-                }
-            }
-            printf_RGB(255,0,255,"]\n");
             printf_RGB(255,0,0,"errorDouble = %d errorNotValide = %d errorCutEntry = %d errorBanEntry = %d errorSearchEntry = %d\n\n",p.errorDouble,p.errorNotValide,p.errorCutEntry,p.errorBanEntry,p.errorSearchEntry);
         }
+    }
+
+    void printf_searched(Param p){
+        int r,g,b;
+
+        int nameMAX = 0;
+        int pathMAX = 0;
+
+        for(int i=0;i<g_searchedElementsIndex;i++){
+            if(nameMAX < (int)strlen(g_searchedElements[i].name)){
+                nameMAX = (int)strlen(g_searchedElements[i].name);
+            }
+            if(pathMAX < (int)strlen(g_searchedElements[i].path)){
+                pathMAX = (int)strlen(g_searchedElements[i].path);
+            }
+        }
+
+        int maxLigne = 2 + nameMAX + 2 + 4 + 2 + pathMAX + 2;
+
+        // ┌─ Éléments recherchés ───────┐
+        // │ CTree  FILE  ../CTree       │
+        // │ CTree  FILE  ../CTree/CTree │
+        // └─────────────────────────────┘
+        // 2 + nameMAX + 2 + pathMAX + 2
+
+        // ┌─ Information numérique ──────┐
+        printf_wave_utf8(0,255,0,0,255,128,"┌─ Éléments recherchés ─",2,&r,&g,&b);
+        for(int i=0;i<maxLigne - 25;i++){
+            printf_wave_utf8(r,g,b,0,255,128,"─",2,&r,&g,&b);
+        }
+        printf_RGB(r,g,b,"┐\n");
+
+        //│ CTree  FILE  ../CTree       │
+        for(int i=0;i<g_searchedElementsIndex;i++){
+            printf_RGB(0,255,0,"│ ");
+            printf("%s",g_searchedElements[i].name);
+            for(int y=0;y<nameMAX - (int)strlen(g_searchedElements[i].name);y++){
+                printf(" ");
+            }
+            printf("  ");
+            if(g_searchedElements[i].type == T_FILE){
+                printf("FILE  ");
+            }else{
+                printf_RGB(0,255,0,"DIR   ");
+            }
+
+            if(g_searchedElements[i].type == T_DIR){
+                printf("%s",g_searchedElements[i].path);
+            }else{
+                printf("%s",g_searchedElements[i].path);
+            }
+            for(int y=0;y<pathMAX - (int)strlen(g_searchedElements[i].path);y++){
+                printf(" ");
+            }
+            printf_RGB(r,g,b," │\n");
+        }
+
+        // └─────────────────────────────┘
+        r,g,b = 0;
+        printf_wave_utf8(0,255,0,0,255,128,"└───────────────────────",2,&r,&g,&b);
+        for(int i=0;i<maxLigne-25;i++){
+            printf_wave_utf8(r,g,b,0,255,128,"─",2,&r,&g,&b);
+        }
+        printf_RGB(r,g,b,"┘\n");
     }
