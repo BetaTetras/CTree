@@ -7,7 +7,7 @@
 
 **CTree** est un outil de visualisation d'arborescence de répertoire Linux
 
-## 📋 | Fonctionnalités de CTree v5.1
+## 📋 | Fonctionnalités de CTree v6.0
 
 | **Paramètres & Fonctionnalités**                                              | **Version** |
 |-------------------------------------------------------------------------------|:-----------:|
@@ -20,6 +20,7 @@
 | **Box colorées** pour l'affichage des statistiques et résultats               | `v5.0`      |
 | **Mise en évidence** des éléments trouvés dans l'arbre (`fond coloré`)        | `v6.0`      |
 | **Box récapitulative** des éléments recherchés avec nom, type et path         | `v6.0`      |
+| **Animation d'attente** pendant le scan de l'arborescence                     | `v6.0`      |
 | [⚙️] *Paramètres*                                                             |             |
 | **`<path>`** Choix du répertoire à afficher en argument                       | `v2.0`      |
 | **`-path`** Affichage du chemin de chaque fichier                             | `v4.0`      |
@@ -29,7 +30,8 @@
 | **`-ban`** Exclusion de fichiers/répertoires de l'affichage                   | `v5.0`      |
 | **`-stats`** Affichage des statistiques globales de l'arborescence            | `v5.0`      |
 | **`-search`** Recherche d'éléments par nom dans l'arborescence                | `v6.0`      |
-| **`-debug`** Affichage des paramètres pour diagnostic                         | `v5.0`      |
+| **`-out`** Export de l'arborescence dans un fichier `.tree`                   | `v6.0`      |
+| **`-debug`** Affichage des paramètres et temps d'exécution                    | `v5.0`      |
 | [🔩] *Technique*                                                              |             |
 | **Récursivité** complète via `scanDirectory()`                                | `v2.0`      |
 | **Gestion mémoire** complète avec `freeDirectory()`                           | `v2.0`      |
@@ -47,25 +49,25 @@
 | **`addToTop10()`** Top 10 des fichiers les plus lourds avec `strdup`          | `v5.0`      |
 | **`ExtStat`** Structure pour les statistiques par extension                   | `v5.0`      |
 | **`printf_searched()`** Affichage de la box récapitulative de recherche       | `v6.0`      |
-| **`printf_debug()`** Fonction dédiée au mode debug (extraite du main)         | `v6.0`      |
+| **`printf_debug()`** Fonction dédiée au mode debug avec temps d'exécution     | `v6.0`      |
 | **`strpartcmp()`** Comparaison partielle de chaînes                           | `v6.0`      |
-| **Stockage du type** avant insertion dans `g_searchedElements`                | `v6.0`      |
-| **Correction** division par zéro dans `printf_wave_utf8`                      | `v6.0`      |
+| **Projet multi-fichiers** `CTree.c` / `tools.c` / `output.c` + headers       | `v6.0`      |
+| **Compilation via** `makefile` avec binaire dans `bin/`                       | `v6.0`      |
 | **Passage unique** `readdir` avec `realloc`                                   | `v5.0`      |
 
 ## ⚙️ | Fonctionnement et déploiement
 
 ### Requis :
-- *v5.1* - N'importe quel PC sous Linux (*gcc* conseillée)
+- *v6.0* - N'importe quel PC sous Linux (*gcc* conseillée)
 
 ### Compilation :
 ```bash
-gcc CTree.c -o CTree
-./CTree <path> [-size] [-path] [-deep] [-cut X Y] [-ban ...] [-stats] [-search ...] [-debug]
+make
+./bin/CTree <path> [-size] [-path] [-deep] [-cut X Y] [-ban ...] [-stats] [-search ...] [-out] [-debug]
 ```
 
 ## 💡 | Remarques
-**CTree v5.1** est une version majeure centrée sur la recherche — le paramètre `-search` permet de localiser des éléments par nom dans toute l'arborescence, avec mise en évidence visuelle dans l'arbre et une box récapitulative affichant le nom, le type (FILE/DIR) et le path de chaque résultat. Plusieurs bugs sont corrigés, notamment la détection incorrecte du type DIR/FILE dans les résultats de recherche et une division par zéro dans `printf_wave_utf8`.
+**CTree v6.0** est une version majeure sur le plan architectural — le projet est désormais découpé en plusieurs fichiers sources (`CTree.c`, `tools.c`, `output.c`) avec leurs headers dans `include/`, compilés via un `makefile`. Le paramètre `-out` permet d'exporter l'arborescence dans un fichier `.tree`. Une animation d'attente s'affiche pendant le scan et le mode `-debug` affiche désormais le temps d'exécution.
 
 ## 📜 | Licence
 Ce projet est sous licence **MIT** – Vous pouvez faire un peu ce que vous voulez tant que je suis crédité.
