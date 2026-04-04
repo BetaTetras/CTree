@@ -50,8 +50,9 @@ int main(int argc, char *argv[]) {
         printf_wave_utf8(178,0,255,0,38,255,"│       => X -> Max depth  (0 = unlimited)                     │\n",1,NULL,NULL,NULL);
         printf_wave_utf8(178,0,255,0,38,255,"│       => Y -> Max length (0 = unlimited)                     │\n",1,NULL,NULL,NULL);
         printf_wave_utf8(178,0,255,0,38,255,"│ -ban [...] .: Ban files from the tree                        │\n",1,NULL,NULL,NULL);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -stats .....: Debug mode (in case of error)                  │\n",1,NULL,NULL,NULL);
-        printf_wave_utf8(178,0,255,0,38,255,"│ -debug ....: Debug mode (in case of error)                   │\n",1,NULL,NULL,NULL);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -stats .....: Show various data from the exploration         │\n",1,NULL,NULL,NULL);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -out .......: Make a text file from the tree structure       │\n",1,NULL,NULL,NULL);
+        printf_wave_utf8(178,0,255,0,38,255,"│ -debug .....: Debug mode (in case of error)                  │\n",1,NULL,NULL,NULL);
         printf_wave_utf8(178,0,255,0,38,255,"└──────────────────────────────────────────────────────────────┘\n",1,NULL,NULL,NULL);
 
         return 0;

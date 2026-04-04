@@ -1,7 +1,7 @@
 # 🌳 | Ctree
 ![Badge Langage](https://img.shields.io/badge/Langage%20:-C-blue?style=plastic)
 ![Badge Licence](https://img.shields.io/badge/Licence%20:-MIT-darkblue?style=plastic)
-![Badge Version](https://img.shields.io/badge/Version%20:-v6.0-lim?style=plastic)
+![Badge Version](https://img.shields.io/badge/Version%20:-clear-lim?style=plastic)
 ![Badge OS](https://img.shields.io/badge/OS%20:-LINUX-blue?style=plastic)
 ![Badge État](https://img.shields.io/badge/État%20%3A-Released-green?style=plastic)
 

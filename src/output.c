@@ -397,7 +397,7 @@ void printf_Stat(){
 
 void printf_debug(Param p,clock_t start,clock_t end){
     if(p.debug){
-        printf_RGB(0,255,0,"-path = %d -size = %d -cut = %d Depth = %d Lenght = %d -ban = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam);
+        printf_RGB(0,255,0,"-path = %d -size = %d [-cut = %d {Depth = %d Lenght = %d}] -ban = %d -search = %d -stats = %d -out = %d\n",p.pathParam,p.sizeParam,p.cutParam,p.cutDepth,p.cutLenght,p.banParam,p.searchParam,p.statsParam,p.outParam);
         if(p.banParam == 1){
             printf_RGB(0,0,255,"Ban list : [");
             for(int i = 0; i < p.nbBanParam; i++){
