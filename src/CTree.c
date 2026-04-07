@@ -205,13 +205,21 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-////////////////////////////////////////////////////////////////
-/* SCANDIRECTORY
-* Fonction qui prend en paramétre un élément (rappelle : ligne 62), avec les data de ce dernier il vas l'analysée en le prenant comme un
-* répertoire et vas définire ces caractéristique (path, liste d'élement ...).
-* Permettre de mettre en place la liste arborifique des fichier avec une liste d'élement et un appelle récursive de cette fonction en cas
-* de rencontre d'un autre répertoire
-*/
+/**
+ * @brief Recursively scans a directory and builds a Directory structure.
+ *
+ * Opens the directory at element.path, iterates over its entries (skipping
+ * "." and ".."), and populates a Directory with Element objects for each
+ * file or sub-directory found. Sub-directories are scanned recursively.
+ * File sizes, extensions, and top-10 tracking are updated during the scan
+ * according to the options in @p p.
+ *
+ * @param element  The element representing the directory to scan (must have
+ *                 type T_DIR and a valid path).
+ * @param p        The active parameter set controlling scan behaviour.
+ * @return         A fully populated Directory structure. The caller is
+ *                 responsible for freeing it via freeDirectory().
+ */
 Directory scanDirectory(Element element,Param p){
     DIR *dir; // On définit un pointeur de type DIR
     Directory NewDirectory; // On instanci une struct de type directory nommée NewDirecory car c'est le directory qu'on vas analysée
@@ -346,11 +354,21 @@ Directory scanDirectory(Element element,Param p){
     return NewDirectory;
 }
 
-/* echoDirectory
-* Fonction qui prend en paramétre un directory a traitée ainsi que le "prefix" (L'arborésence actuelle du directory)
-* ainsi que la profondeur du directory.
-* Permet d'afficher l'arborésence aisni que traiter les paramétre entrée par l'utilisateur.
-*/
+/**
+ * @brief Recursively prints the directory tree to stdout (and optionally to a file).
+ *
+ * Iterates over every element in @p directory, printing the appropriate
+ * tree branch characters (├── or └──) and the element name. Applies the
+ * active options from @p p: path display, size display (with gradient
+ * colour), ban filtering, depth and length cutting, and search highlighting.
+ * Recurses into sub-directories unless the cut depth has been reached.
+ *
+ * @param directory  The Directory whose contents should be printed.
+ * @param prefix     The branch-prefix string accumulated from parent calls
+ *                   (e.g. "│  "). Pass "" for the root level.
+ * @param p          The active parameter set controlling display behaviour.
+ * @param depth      Current recursion depth relative to the root directory.
+ */
 void echoDirectory(Directory directory, String prefix, Param p, int depth){
     int nbElement = directory.nbDir + directory.nbFile;
 
@@ -576,9 +594,15 @@ void echoDirectory(Directory directory, String prefix, Param p, int depth){
     }
 }
 
-/* freeDirectory
-* Fonction qui libére tout les allocation d'un répertoire passée en paramétre, a utlisée a la fin
-*/
+/**
+ * @brief Recursively frees all heap memory allocated for a Directory.
+ *
+ * Recurses into every sub-directory first, then frees each element's
+ * name, path, ext, and sizeStr strings, followed by the elements and
+ * Directorys arrays and the directory's own path string.
+ *
+ * @param dir  Pointer to the Directory to free. Must not be NULL.
+ */
 void freeDirectory(Directory* dir) {
     for(int i=0;i<dir->nbDir;i++)
         freeDirectory(&dir->Directorys[i]);
@@ -594,6 +618,17 @@ void freeDirectory(Directory* dir) {
     free(dir->path);
 }
 
+/**
+ * @brief Displays an animated spinner in the terminal while scanning is in progress.
+ *
+ * Runs in a dedicated pthread. Cycles through Braille spinner frames at
+ * ~80 ms intervals and prints the current file/directory counts alongside
+ * the spinner. Exits the loop when the global g_scanning flag is set to 0,
+ * then clears the spinner line.
+ *
+ * @param arg  Unused thread argument (pass NULL).
+ * @return     Always returns NULL.
+ */
 void* animLoader(void* arg){
     (void)arg;
     char* frames[] = {"⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"};

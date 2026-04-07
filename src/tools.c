@@ -6,9 +6,14 @@
 
 #include "tools.h"
 
-/* depthCount
-* Fonction qui donne la profondeur d'un fichier depuis son path
-*/
+/**
+ * @brief Counts the depth of a path by counting '/' separators.
+ *
+ * A leading "./" prefix is ignored before the count begins.
+ *
+ * @param path  The path string to evaluate.
+ * @return      The number of '/' characters (i.e. directory depth).
+ */
 int depthCount(String path){
     int depth = 0;
     int i = 0;
@@ -26,9 +31,15 @@ int depthCount(String path){
     return depth;
 }
 
-/* getDirectorySize
-* Donne le poids d'un répertoire
-*/
+/**
+ * @brief Recursively computes the total size of a directory in bytes.
+ *
+ * Sums the sizes of all regular files directly inside @p dir, then
+ * recurses into each sub-directory to accumulate their contents.
+ *
+ * @param dir  The Directory to measure.
+ * @return     Total size in bytes as a double.
+ */
 double getDirectorySize(Directory dir) {
     double totalSize = 0.0;
     
@@ -47,9 +58,15 @@ double getDirectorySize(Directory dir) {
     return totalSize;
 }
 
-/* getSizeCategory
-* Donne la catégorie du poids d'un fichier
-*/
+/**
+ * @brief Converts a byte count into a human-readable size string.
+ *
+ * Selects the most appropriate unit (O, KO, MO, GO, TO) and formats
+ * the value with two decimal places. The caller must free the returned string.
+ *
+ * @param size  Size in bytes.
+ * @return      A newly-allocated string such as "1.50 MO".
+ */
 String getSizeStr(long long size){
     char* str = calloc(20, sizeof(char));
     if(size < 1024LL)
@@ -64,10 +81,18 @@ String getSizeStr(long long size){
         snprintf(str, 20, "%.2f TO", (double)size / (1024.0*1024.0*1024.0*1024.0));
     return str;
 }
-/* getParameter
-* Traite les paramétre passée en paramétre a l'appelle de la fonction et renvois une structure
-* décrivant tout les paramétre associée 
-*/
+/**
+ * @brief Parses command-line arguments and returns a populated Param structure.
+ *
+ * Iterates over argv from index 2 onwards. Recognised flags: -path, -size,
+ * -deep, -cut <depth> <length>, -ban <name...>, -search <name...>, -stats,
+ * -out, -debug. Sets error flags (errorDouble, errorNotValide, errorCutEntry,
+ * errorBanEntry, errorSearchEntry) on invalid or duplicate input.
+ *
+ * @param argc  Number of command-line arguments.
+ * @param argv  Array of command-line argument strings.
+ * @return      A Param struct describing every requested option.
+ */
 Param getParameter(int argc,char* argv[]){
     Param param;
     param.errorDouble      = 0;
@@ -215,9 +240,15 @@ Param getParameter(int argc,char* argv[]){
     return param;
 }
 
-/* _atoi
-* ma version de atoi par ce que j'adore réinventais la roue lol
-*/
+/**
+ * @brief Converts a string to an integer (custom atoi implementation).
+ *
+ * Handles an optional leading '-' sign. Returns the sentinel -32767 when
+ * the input is NULL, empty, contains non-digit characters, or is just "-".
+ *
+ * @param input  The string to convert.
+ * @return       The converted integer, or -32767 on invalid input.
+ */
 int _atoi(char *input){
     if (input == NULL || input[0] == '\0')
         return -32767;
@@ -249,6 +280,16 @@ int _atoi(char *input){
     return sign * value;
 }
 
+/**
+ * @brief Extracts the file extension from a filename.
+ *
+ * Returns the substring starting at the last '.' found in @p str (inclusive).
+ * If no dot is present, an empty string is returned. The caller must free
+ * the returned string.
+ *
+ * @param str  The filename string.
+ * @return     A newly-allocated extension string (e.g. ".c"), or "" if none.
+ */
 String getExt(char* str){
     int lastDot = -1;
 
@@ -266,6 +307,15 @@ String getExt(char* str){
     return ext;
 }
 
+/**
+ * @brief Registers or increments an extension in the global extension stats.
+ *
+ * Searches g_extStats for an existing entry matching @p ext. If found its
+ * count is incremented; otherwise a new entry is appended and g_nbExt is
+ * increased. A NULL or empty @p ext is treated as ".".
+ *
+ * @param ext  The extension string (e.g. ".c"). May be NULL.
+ */
 void addExt(char* ext){
     if(ext == NULL || ext[0] == '\0'){
         ext = ".";
@@ -284,6 +334,12 @@ void addExt(char* ext){
     g_extStats[g_nbExt-1].count = 1;
 }
 
+/**
+ * @brief Sorts the global extension stats array by count (descending).
+ *
+ * Applies a bubble-sort on g_extStats so that the most-frequent extensions
+ * appear first, ready for display in the statistics panel.
+ */
 void triABulleExt(){
     for(int i = 0; i < g_nbExt - 1; i++){
         for(int y = 0; y < g_nbExt - i - 1; y++){
@@ -296,10 +352,16 @@ void triABulleExt(){
     }
 }
 
-/* addToTop10
-* Insère un élément dans le top 10 des fichiers les plus lourds
-* O(1) par fichier, pas de stockage de tous les fichiers
-*/
+/**
+ * @brief Inserts an element into the global top-10 largest-files list.
+ *
+ * Maintains a sorted array (g_topFiles) of the ten largest files seen so
+ * far. If @p element is larger than the current tenth entry, it is inserted
+ * at the correct position and the smallest previous entry is evicted.
+ * String fields (name, path, sizeStr, ext) are duplicated before insertion.
+ *
+ * @param element  The file element to consider for the top-10 list.
+ */
 void addToTop10(Element element) {
     if(!g_topFilesInit){
         for(int i=0;i<10;i++) g_topFiles[i].size = 0;
@@ -334,6 +396,14 @@ void addToTop10(Element element) {
     free(copy.sizeStr); free(copy.ext);
 }
 
+/**
+ * @brief Returns the number of decimal digits in a non-negative integer.
+ *
+ * Special-cases zero, which is considered to have one digit.
+ *
+ * @param nb  The non-negative integer to evaluate.
+ * @return    Number of decimal digits (e.g. 100 → 3, 0 → 1).
+ */
 int nbDigit(int nb){
     if(nb == 0){
         return 1;
@@ -348,6 +418,15 @@ int nbDigit(int nb){
     return count;
 }
 
+/**
+ * @brief Converts an integer to its decimal string representation.
+ *
+ * Handles negative values by prepending '-'. The caller is responsible for
+ * freeing the returned string.
+ *
+ * @param NbINT  The integer to convert.
+ * @return       A newly-allocated null-terminated decimal string.
+ */
 String intToString(int NbINT){
     long BufferINT = NbINT;
     int NbCar = 1;
@@ -382,6 +461,15 @@ String intToString(int NbINT){
     return NbSTR;
 }
 
+/**
+ * @brief Returns the number of visible characters in a UTF-8 string.
+ *
+ * Skips UTF-8 continuation bytes (0x80–0xBF) so the count reflects the
+ * number of actual glyphs rather than raw bytes.
+ *
+ * @param s  The UTF-8 encoded string.
+ * @return   Number of visible characters.
+ */
 int strlenVis(const char* s){
     int count = 0;
     const unsigned char* p = (const unsigned char*)s;
@@ -392,6 +480,16 @@ int strlenVis(const char* s){
     return count;
 }
 
+/**
+ * @brief Checks whether @p str is a substring of @p src.
+ *
+ * Performs a linear scan of @p src for the first occurrence of the
+ * contiguous character sequence @p str.
+ *
+ * @param src  The string to search within.
+ * @param str  The substring to look for.
+ * @return     1 if @p str is found inside @p src, 0 otherwise.
+ */
 int strpartcmp(char* src, char* str) {
     int srcLen = (int)strlen(src);
     int strLen = (int)strlen(str);
