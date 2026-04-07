@@ -99,7 +99,7 @@ void printf_Stat();
  * @param start  Clock tick recorded at program start.
  * @param end    Clock tick recorded at program end.
  */
-void printf_debug(Param p, clock_t start, clock_t end);
+void printf_debug(Param p,clock_t start,clock_t end);
 
 /**
  * @brief Prints the search-results panel to stdout.
