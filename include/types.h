@@ -49,19 +49,8 @@ typedef struct {
     int debug;
 } Param;
 
-/* TYPE DE FICHIER
-* chaque elemnt (fichier ou repetoire)) on leur propre data comme leur nom , le path ainsi que leur
-* propre type. Utile pour la récursivitée 
-*/
-typedef struct {
-    String name;
-    ElementType type;
-    String path;
-    String ext;
-    long long size;
-    double sizeConverted;
-    String sizeStr;
-} Element;
+typedef struct Directory Directory;
+typedef struct Element Element;
 
 /* TYPE DE REPERTOIRE 
 * Chaque repertoire, a en plus des data qui lui son ratachée pour son utilisation telle que la liste
@@ -70,7 +59,6 @@ typedef struct {
 * Il contine aussi le nombre totale de fichier ou de repertoire (Pour des soucis de boucle) ainsi que
 * sa profondeur (pour se reperée dans l'architecture).
 */
-typedef struct Directory Directory;
 struct Directory {
     Element *elements;      // Liste des fichier
     Directory *Directorys;  // Liste des repertoire
@@ -78,6 +66,22 @@ struct Directory {
     int depth;              // Sa profondeur par rapport au répertoire racine choisi
     int nbDir;              // Nombre de directory -> Répertoire
     int nbFile;             // Nombre de fichiers
+};
+
+/* TYPE DE FICHIER
+* chaque elemnt (fichier ou repetoire)) on leur propre data comme leur nom , le path ainsi que leur
+* propre type. Utile pour la récursivitée 
+*/
+struct Element{
+    String name;
+    ElementType type;
+    String path;
+    String ext;
+    long long size;
+    double sizeConverted;
+    String sizeStr;
+
+    Directory* subDir;
 };
 
 /* NOMBRE DE FOIS PAR EXTENTION

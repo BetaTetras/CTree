@@ -490,3 +490,26 @@ void printf_searched(){
     }
     printf_RGB(r,g,b,"┘\n");
 }
+
+void printf_error(int error){
+    printf("\n[");
+    printf_RGB(255,0,0,"!");
+    printf("] Erreur survenu lors du scan ... (");
+    switch(error){
+        case 13:
+            printf("Permission denied)\n");
+        break;
+
+        case 2:
+            printf("No such file or directory)\n");
+        break;
+
+        case 12:
+            printf("Out of memory)\n");
+        break;
+
+        case 20:
+            printf("Not a directory)\n");
+        break;
+    }
+}

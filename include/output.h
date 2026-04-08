@@ -13,5 +13,6 @@ void printf_debug(Param p,clock_t start,clock_t end);
 void printf_searched();
 int* print_rainbow(int* rgb, float brightness, const char* string, int pas, int sens, int max);
 void printBarre(int _Size, int value);
+void printf_error(int error);
 
 #endif

@@ -16,5 +16,6 @@ int    strlenVis(const char* s);
 int    strpartcmp(char* src, char* str);
 int    nbDigit(int nb);
 String intToString(int nb);
+int    compareElements(const void *a, const void *b);
 
 #endif

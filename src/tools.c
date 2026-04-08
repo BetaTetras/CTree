@@ -410,3 +410,9 @@ int strpartcmp(char* src, char* str) {
     }
     return 0;
 }
+
+int compareElements(const void *a, const void *b) {
+    const Element *elemA = (const Element *)a;
+    const Element *elemB = (const Element *)b;
+    return strcmp(elemA->name, elemB->name);
+}

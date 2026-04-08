@@ -7,12 +7,13 @@
 #include <time.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "types.h"
 #include "tools.h"
 #include "output.h"
 
-Directory scanDirectory(Element element,Param p);
+Directory scanDirectory(Element element,Param p,int* error);
 void echoDirectory(Directory directory,String prefix,Param p,int depth);
 void freeDirectory(Directory* dir);
 
@@ -173,11 +174,17 @@ int main(int argc, char *argv[]) {
     g_scanning = 1;
     pthread_create(&thread, NULL, animLoader, NULL);
 
+    int error = 0;
+
     /*
     * On fais appelle a la fonction scanDirecory qui me permet de remplire
     * le typdef pour l'exploiter juste apres
     */
-    Directory Dir = scanDirectory(parent,p);
+    Directory Dir = scanDirectory(parent,p,&error);
+    if(error == 1){
+        printf_error(error);
+        return 1;
+    }
 
     g_scanning = 0;
     pthread_join(thread, NULL);
@@ -212,7 +219,7 @@ int main(int argc, char *argv[]) {
 * Permettre de mettre en place la liste arborifique des fichier avec une liste d'élement et un appelle récursive de cette fonction en cas
 * de rencontre d'un autre répertoire
 */
-Directory scanDirectory(Element element,Param p){
+Directory scanDirectory(Element element,Param p,int* error){
     DIR *dir; // On définit un pointeur de type DIR
     Directory NewDirectory; // On instanci une struct de type directory nommée NewDirecory car c'est le directory qu'on vas analysée
 
@@ -230,8 +237,18 @@ Directory scanDirectory(Element element,Param p){
     // Création de la struct data qui est le cusrseur dans le fichier 
     struct dirent *data;
 
+    // Sécuritée
+    NewDirectory.elements   = NULL;
+    NewDirectory.Directorys = NULL;
+    NewDirectory.nbDir      = 0;
+    NewDirectory.nbFile     = 0;
+
     // On ouvre le fichier qui se trouve dans le path de l'élément passée en param
     dir = opendir(NewDirectory.path);
+    if(!dir){
+        *error = errno;
+        return NewDirectory;
+    }
 
     // On crée donc la liste d'élements qu'il y'a dans le répertoire
     // Allocation large pour éviter les problèmes de double passage readdir
@@ -272,9 +289,10 @@ Directory scanDirectory(Element element,Param p){
             NewDirectory.elements[i].type = T_DIR;
 
             // Scanner le sous-répertoire
-            Directory subDir = scanDirectory(NewDirectory.elements[i],p);
+            Directory subDir = scanDirectory(NewDirectory.elements[i],p,error);
             // On affecte se sous répertoire a la liste des répertoire du répertoire parent
             NewDirectory.Directorys[IndexDire] = subDir;
+            NewDirectory.elements[i].subDir = &NewDirectory.Directorys[IndexDire];
             IndexDire++;
 
             // Calculer la taille réelle du sous-répertoire
@@ -292,6 +310,8 @@ Directory scanDirectory(Element element,Param p){
             struct stat st;
             stat(NewDirectory.elements[i].path, &st);
             long long buffer = st.st_size;
+
+            NewDirectory.elements[i].subDir = NULL;
 
             // On définit sa taille et sa représentation en string
             NewDirectory.elements[i].size = buffer;
@@ -341,6 +361,10 @@ Directory scanDirectory(Element element,Param p){
     }else{
         NewDirectory.Directorys = realloc(NewDirectory.Directorys, 1 * sizeof(Directory));
     }
+    
+    if (i > 0) {
+        qsort(NewDirectory.elements, i, sizeof(Element), compareElements);
+    }
 
     closedir(dir);
     return NewDirectory;
@@ -372,7 +396,6 @@ void echoDirectory(Directory directory, String prefix, Param p, int depth){
     }
 
     int indexLenght = 0;
-    int IndexDir = 0;
 
     for(int i=0;i<nbElement;i++){
         if(directory.elements[i].type == T_FILE){
@@ -478,7 +501,6 @@ void echoDirectory(Directory directory, String prefix, Param p, int depth){
                 }
             }
             if(found == 1){
-                IndexDir++;
                 continue;
             }
 
@@ -562,10 +584,9 @@ void echoDirectory(Directory directory, String prefix, Param p, int depth){
             }
 
             if(!(p.cutParam && depth >= p.cutDepth)){
-                echoDirectory(directory.Directorys[IndexDir],NewPrefix,p,depth + 1);
+                echoDirectory(*directory.elements[i].subDir, NewPrefix, p, depth + 1);
             }
             free(NewPrefix);
-            IndexDir++;
 
         }else if(directory.elements[i].type == T_UNKN){
             printf_RGB(255,0,0,"%s\n",directory.elements[i].name);
